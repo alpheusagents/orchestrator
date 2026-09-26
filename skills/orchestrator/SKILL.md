@@ -11,138 +11,33 @@ Invariant: main agent = understand, decompose, dispatch, evaluate, replan, summa
 
 Trigger by natural phrasing ("orchestrate this task", "sub-agent driven development") or the `/orchestrate` slash command, with the task as arguments. If the host runtime supports command registration, `/orchestrate` may be registered as a command that loads this skill and passes the arguments as the task.
 
-## Dispatch Loop
+## Workspace and Ledger
 
-1. Decompose the goal into task packets (schema below).
-2. Dispatch each to the matching role (routing table below).
-3. Evaluate each result against its success criteria (result contract below).
-4. Replan on incomplete/contradictory/failed results (Failure Classification below); summarize with evidence when criteria are met.
+At orchestration start, resolve the workspace under the repository root:
 
-## Routing
+1. Ensure `<repo-root>/.orchestrator/` exists with a `.gitignore` containing `*` and `!.gitignore` — the directory ignores everything and is self-contained; create both if absent (idempotent).
+2. Scan existing `*/progress.md` first lines. A ledger whose first line names this goal (`# Orchestrator ledger — goal: <verbatim goal>`) is this session's workspace: tasks with a completion line are DONE — do not re-dispatch them; resume at the first task without one. A ledger whose last line is a fix round is mid-loop; resume the loop at the next round. A ledger naming a different goal is another session's workspace: leave it alone and start fresh.
+3. New session: create `<YYYY-MM-DD>-<goal-slug>/` with a ledger whose first line is the identity above and whose second line records the session BASE (`git rev-parse HEAD`) — the final review's whole-change diff needs it. Date prefix keeps sessions sortable; the slug keeps them readable; the ledger's first line — not the directory name — is the identity.
 
-Capability-based, not personality-based. Route from this table; do not read the role files yourself — workers read their own file at dispatch.
+The ledger is the recovery map: conversation memory does not survive compaction, and controllers that lost their place have re-dispatched entire completed task sequences. After compaction, trust the ledger and `git log` over your own recollection. Record in it, one line each:
 
-| Role             | Capability                                       | Permission                            | Route when                                           | Contract                   |
-| ---------------- | ------------------------------------------------ | ------------------------------------- | ---------------------------------------------------- | -------------------------- |
-| explorer         | read-only repository investigation               | read-only                             | repository understanding the main agent lacks        | agents/explorer.md         |
-| researcher       | external or documentation research               | read-only; network only when required | the answer lives outside the repository              | agents/researcher.md       |
-| implementer      | implementation within an explicitly stated scope | safe-edit                             | the objective creates or modifies code or files      | agents/implementer.md      |
-| tester           | test execution and validation                    | execution                             | acceptance criteria need observed evidence from runs | agents/tester.md           |
-| reviewer         | independent assessment of one worker's output    | read-only                             | medium/high-risk work beyond deterministic checks    | agents/reviewer.md         |
-| reviewer-recheck | fix verification, one verdict per finding        | read-only                             | confirmed findings were repaired and need verdicts   | agents/reviewer-recheck.md |
+- `Task <N>: complete (commits <base7>..<head7>, review pass)` for code tasks, `Task <N>: complete (evidence: <one-liner>)` for non-code tasks — or `<K> parked` after a tripped breaker
+- `Task <N>: fix round <R>/<cap> (<X> addressed, <Y> open — <finding one-liners>)`
+- `Task <N>: deferred: <finding one-liner>`
+- `Task <N>: blocked — <why>`
+- `Ruling: <what you decided> — <why>`
 
-Economy: expensive tokens -> coordination; cheap tokens -> execution. Main context -> compact evidence; worker context -> detailed execution.
+Session artifacts live in the workspace alongside the ledger, one file per task:
 
-## Dispatch Discipline
+| File                  | Written by   | Contents                                                                                                                        |
+| --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `task_XXX-brief.md`   | orchestrator | full requirements; exact values appear only here; written once at decomposition, reused by every re-dispatch and resume         |
+| `task_XXX-report.md`  | worker       | the worker's full report; fix reports append to it                                                                              |
+| `task_XXX-package.md` | orchestrator | review package: commit list + `--stat` + full diff; produced with shell redirection, never read into the orchestrator's context |
+| `task_XXX-review.md`  | reviewer     | the review report                                                                                                               |
+| `task_XXX-recheck.md` | recheck      | per-finding verdicts                                                                                                            |
 
-- One dispatch = one task packet. Never paste accumulated prior-task summaries or session history; reference results instead (`task_XXX.result.*`).
-- Dispatch composition: per Dispatch Format — role-file reference + task packet, nothing else. The role file (`agents/<role>.md`) is the authoritative operating contract; never paste, paraphrase, or summarize it into the dispatch: pasting costs orchestrator tokens, paraphrasing produces variance, and both drift from the canonical text. The worker reading the file itself is cheap-token work; the orchestrator regenerating it is expensive-token work.
-- Batch small same-shape work: several independent edits of the same kind are one dispatch with one review surface, not one dispatch each.
-- Model discipline: always specify the model explicitly when dispatching; an omitted model silently inherits the session's most expensive one. Use the least capable model that can handle the role. Turn count beats token price: cheap models routinely take 2-3x the turns on multi-step work, so a mid-tier model is the floor for reviewers and for implementers working from prose. Reserve the cheapest tier for transcription-like work (the complete code is in the packet) and single-file mechanical edits.
-
-## Dispatch Format
-
-Every dispatch message is exactly two parts, in order:
-
-```
-Your operating contract is <skill_dir>/agents/<role>.md — read it first, then execute this task packet.
-
-Task {
-    id: task_001
-    type: explore
-    objective: <one sentence>
-    context: <prior-result references and facts the worker cannot discover itself>
-    scope: [...]
-    constraints: [...]
-    dependencies: [...]
-    success_criteria: [...]
-}
-```
-
-Field types and definitions are in Task Schema; the per-role field subset is in the role file's Expected input. That message is the whole dispatch. Domain detail — investigation points, report requirements, deliverable structure — is expressed through the packet's `context` and `success_criteria` fields, never as prompt prose beside it. The role file already defines how the worker works; the packet already defines what the worker produces.
-
-`<skill_dir>` is the directory containing this SKILL.md, resolved from the skill's install path at load time. Resolve the role file's full path before dispatching. If a role file cannot be located, mark the task `blocked` and report to the user.
-
-## Parallelism
-
-- Read-only tasks: parallel by default when independent.
-- Write tasks: parallel only with isolated worktrees or provably disjoint file ownership.
-- Dependent tasks: strictly sequential.
-
-## Task Schema
-
-| Field              | Type       | Description                                                                |
-| ------------------ | ---------- | -------------------------------------------------------------------------- |
-| `id`               | `string`   | unique, e.g. `task_001`                                                    |
-| `type`             | enum       | `explore` \| `research` \| `implement` \| `test` \| `review`               |
-| `objective`        | `string`   | one-sentence goal                                                          |
-| `context`          | `string`   | compact prior-result summaries and facts the worker cannot discover itself |
-| `scope`            | `string[]` | files/directories the worker may touch                                     |
-| `constraints`      | `string[]` | rules, style, limits; includes non-goals ("do not X")                      |
-| `dependencies`     | `string[]` | task ids whose results are required                                        |
-| `success_criteria` | `string[]` | what the result must settle                                                |
-
-Worked example:
-
-```
-Task {
-    id: task_002
-    type: implement
-    objective: Add slug validation to src/post.ts before publish.
-    context: task_001.result.findings — Post.slug is set in publish(), no validation exists.
-    scope: [src/post.ts, src/post.test.ts]
-    constraints: [no schema changes, do not refactor unrelated code, match existing test style]
-    dependencies: [task_001]
-    success_criteria: [invalid slugs rejected with error, tests pass]
-}
-```
-
-Rules: one objective per task; every task self-contained (workers do not inherit conversations or the main agent's transcript); scope always bounded; success criteria explicit when practical. Each role file's Expected input enumerates the exact packet fields that role consumes.
-
-## Context Sharing
-
-Reference prior results compactly: `task_001.result.summary`, `task_001.result.findings`, `task_001.result.evidence`. Never forward full transcripts or file dumps. Include detailed artifacts only when the task cannot proceed without them.
-
-## Result Contract
-
-| Field                    | Type       | Description                                              |
-| ------------------------ | ---------- | -------------------------------------------------------- |
-| `task_id`                | `string`   | the dispatched task's id                                 |
-| `status`                 | enum       | `completed` \| `failed` \| `blocked` \| `needs_followup` |
-| `summary`                | `string`   | short                                                    |
-| `findings`               | `string[]` | role contracts may refine the shape                      |
-| `evidence`               | `string[]` | paths, exit codes, excerpts — not dumps                  |
-| `unresolved`             | `string[]` | remaining work for a `needs_followup` result             |
-| `recommended_next_tasks` | `string[]` | task ids or next-step descriptors                        |
-
-Rules:
-
-- Role-specific fields (e.g. `verdict`, `tests_run`, `changed_files`) are defined in each role file's Report contract, together with that role's worked example; that contract is canonical for the role and must not diverge from this skeleton. This schema is the shared frame for uniform evaluation across roles.
-- Results are compact: the main agent receives the result, never the worker's transcript.
-- Never report unverified success; `failed` must state why, `needs_followup` must list remaining work in `unresolved`.
-
-Result of the packet above:
-
-```
-AgentResult {
-    task_id: task_002
-    status: completed
-    summary: Slug validation added and enforced in publish().
-    findings: [Empty/duplicate slugs now throw, valid slugs pass through unchanged]
-    evidence: [src/post.ts:41-48, 6/6 tests pass (vitest exit 0)]
-    unresolved: []
-    recommended_next_tasks: [review task_002 diff]
-}
-```
-
-## Bounded Orchestration
-
-1. Max task depth: 1 — no worker spawns workers.
-2. Max active tasks: 4 concurrent.
-3. Max retries: 3 per task; then mark blocked and report.
-4. Max orchestration rounds: 8 delegate-evaluate cycles; then escalate to the user.
-
-A retry must change something (context, scope, approach, worker, decomposition); never repeat identical inputs.
+Hand artifacts over as files: everything pasted into a dispatch prompt stays resident in your context for the rest of the session and is re-read on every later turn. The dispatch carries paths; the worker reads the files itself.
 
 ## Delegation Economics
 
@@ -163,6 +58,62 @@ Normally delegated:
 
 Keep inline: choosing the next step, resolving worker contradictions, judging evidence sufficiency, final synthesis.
 
+## Dispatch Loop
+
+1. Decompose the goal into tasks; write a brief file per task that needs exact values or detailed requirements.
+2. Dispatch each to the matching role (routing table below): read the role's template, fill its slots, send the entire filled prompt.
+3. Evaluate each return against its status; read the report file when the return raises doubts (evaluating a report file costs nothing — it is already on disk).
+4. Replan on `failed`/`blocked`/`needs_followup` (Failure Classification below); summarize with evidence when criteria are met. Append to the ledger in the same message as your bookkeeping.
+
+## Routing
+
+Capability-based, not personality-based. Route from this table; do not read the template's prompt skeleton yourself — read the fill instructions, fill, dispatch.
+
+| Role             | Capability                                       | Permission                            | Route when                                           | Template                      |
+| ---------------- | ------------------------------------------------ | ------------------------------------- | ---------------------------------------------------- | ----------------------------- |
+| explorer         | read-only repository investigation               | read-only                             | repository understanding the main agent lacks        | `prompts/explorer.md`         |
+| researcher       | external or documentation research               | read-only; network only when required | the answer lives outside the repository              | `prompts/researcher.md`       |
+| implementer      | implementation within an explicitly stated scope | safe-edit                             | the objective creates or modifies code or files      | `prompts/implementer.md`      |
+| tester           | test execution and validation                    | execution                             | acceptance criteria need observed evidence from runs | `prompts/tester.md`           |
+| reviewer         | independent assessment of one worker's output    | read-only                             | medium/high-risk work beyond deterministic checks    | `prompts/reviewer.md`         |
+| reviewer-recheck | fix verification, one verdict per finding        | read-only                             | confirmed findings were repaired and need verdicts   | `prompts/reviewer-recheck.md` |
+
+Economy: expensive tokens -> coordination; cheap tokens -> execution. Main context -> compact evidence; worker context -> detailed execution.
+
+## Dispatch Discipline
+
+- One dispatch = one filled template. Never paste accumulated prior-task reports or session history; pass report-file paths instead.
+- Briefs are the single source of requirements: exact values (numbers, magic strings, signatures, test cases) appear only in the brief file, never in the dispatch prose or your own context. A fresh worker needs its brief, the interfaces it touches, and the binding constraints — nothing else.
+- Batch small same-shape work: several independent edits of the same kind are one dispatch with one review surface, not one dispatch each.
+- Never paste a worker's report, a diff, or a file dump into a dispatch; write it to the workspace and pass the path. Exception: finding one-liners for a fix or recheck dispatch go in verbatim — they scope the work being judged.
+- Model discipline: always set the dispatch call's model parameter explicitly (`[MODEL]` is never a prompt slot); an omitted model silently inherits the session's most expensive one. Use the least capable model that can handle the role. Turn count beats token price: cheap models routinely take 2-3x the turns on multi-step work, so a mid-tier model is the floor for reviewers and for implementers working from prose. Reserve the cheapest tier for transcription-like work (the complete code is in the brief) and single-file mechanical edits.
+- Record `BASE` (`git rev-parse HEAD`) before dispatching an implementer; the review package needs it — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task.
+
+## Dispatch Format
+
+Every dispatch is the role's template, filled and sent whole:
+
+1. Read `<skill_dir>/prompts/<role>.md`. `<skill_dir>` is the directory containing this SKILL.md, resolved from the skill's install path at load time — the orchestrator resolves it, the worker never does.
+2. Fill every slot per the template's fill instructions. `[MODEL]` is always explicit.
+3. Send the entire filled prompt as the dispatch. Do not improvise around it, summarize it, or append free-form prose: improvised prompts are the primary source of format drift, and the templates are the distilled, session-tested versions of every rule the worker needs.
+
+If a template cannot be located, mark the task `blocked` and report to the user. Never import third-party templates.
+
+## Parallelism
+
+- Read-only tasks: parallel by default when independent.
+- Write tasks: parallel only with isolated worktrees or provably disjoint file ownership.
+- Dependent tasks: strictly sequential.
+
+## Bounded Orchestration
+
+1. Max task depth: 1 — no worker spawns workers.
+2. Max active tasks: 4 concurrent.
+3. Max retries: 3 per task; then mark blocked and report.
+4. Max orchestration rounds: 8 delegate-evaluate cycles; then escalate to the user.
+
+A retry must change something (context, scope, approach, worker, decomposition); never repeat identical inputs.
+
 ## Verification Ladder
 
 ```
@@ -171,9 +122,27 @@ medium risk -> worker result + deterministic checks + reviewer when useful
 high risk   -> worker + deterministic validation + independent reviewer
 ```
 
-Risk factors: files modified, tests exist, blast radius, evidence independence. Deterministic checks = lint/typecheck/tests/build. The reviewer is read-only and must not blindly trust the implementer's summary.
+Risk factors: files modified, tests exist, blast radius, evidence independence. Deterministic checks = lint/typecheck/tests/build. The reviewer is read-only and must not blindly trust the implementer's report; it verifies against the review package.
 
-Suggestions never block. Carry deferred findings forward in result `unresolved` fields and triage them at final review; a finding that is silently dropped is forbidden. Never instruct a reviewer to ignore or pre-judge a finding: let findings surface and adjudicate them yourself.
+## Review Loop
+
+Per-task reviews are task-scoped gates. A broad whole-change review happens once, at the end.
+
+1. After an implementer reports, generate the review package into the workspace (`git log --oneline <BASE>..<HEAD>`, `git diff --stat`, `git diff -U10` — one file, `task_XXX-package.md`). Produce it with shell redirection — never read the diff into your own context. Never dispatch a reviewer without a package file.
+2. Dispatch the reviewer with the package path, the brief path, the worker's report path, and the binding constraints copied verbatim. Do not pre-judge findings and never instruct a reviewer to ignore an issue; let findings surface and adjudicate them yourself.
+3. On `fail` — or any confirmed blocking finding — enter the fix loop: send the findings verbatim back to the same implementer (rounds 1-3); if the harness cannot resume it, dispatch a fresh implementer carrying the brief, report path, and findings — the report file is the persistent memory either way. Every fix round ends with one scoped re-review (`reviewer-recheck`) over a fresh fix package (`task_XXX-package-r<R>.md`, diffed since the last review); new breakage joins the open findings. Record each round in the ledger.
+4. Every repair's recheck must be present before the next task starts; unreviewed fixes are how regressions land.
+5. When the review passes — or the retry cap is hit and open findings are adjudicated (see Rulings) — ledger the completion and move on. Deferred findings are ledgered and triaged at final review; a finding silently dropped is forbidden.
+
+Suggestions never block. Never re-run a suite the worker already ran; its report file is the test evidence.
+
+## Final Review and Summary
+
+Per-task reviews are gates; one whole-change review closes the session:
+
+1. Generate `final-package.md` (commit list + `--stat` + full diff, session BASE..HEAD, shell redirection) and dispatch one reviewer over it, judged against the goal and the binding constraints.
+2. Triage the ledger's deferred findings against the final review: a confirmed load-bearing one gets the smallest unblocking repair (Rulings); the rest are reported, never silently dropped.
+3. Summarize to the user: the goal, what shipped (commits), test evidence, and every deferred or parked item with its reason. Append the session's close-out line to the ledger.
 
 ## Failure Classification
 
@@ -186,28 +155,41 @@ Suggestions never block. Carry deferred findings forward in result `unresolved` 
 | Permission problem   | Blocked; report to user |
 | Unknown              | Delegate investigation  |
 
-When a task survives repeated retries, stop varying inputs and change the worker: dispatch a fresh implementer on a more capable model, framed as "prior attempts failed N times; you own it now", with the prior findings carried in context. A loop that survives retries usually means the worker cannot see its own problem; fresh eyes and a capability bump in one move. Every repair gets a recheck (agents/reviewer-recheck.md) that verdicts the findings and inspects only the fix surface.
+When a task survives repeated retries, stop varying inputs and change the worker: dispatch a fresh implementer on a more capable model, framed as "prior attempts failed N times; you own it now", with the findings carried in context. A loop that survives retries usually means the worker cannot see its own problem; fresh eyes and a capability bump in one move. Every repair gets a recheck (prompts/reviewer-recheck.md) that verdicts the findings and inspects only the fix surface.
 
 ## Rulings, Not Stalls
 
-Decide conflicts, ambiguities, and plan defects yourself instead of parking the workflow on the user; carry the ruling into the context of dependent dispatches. Only four things go to the user: irreversible or destructive operations, security-sensitive actions, side effects outside the stated scope, and a plan so broken that every path forward is a guess. A wrong ruling costs visible rework; a parked question costs the session.
+Decide conflicts, ambiguities, and plan defects yourself instead of parking the workflow on the user; carry the ruling into the context of dependent dispatches. Only four things go to the user: irreversible or destructive operations, security-sensitive actions, side effects outside the stated scope, and a goal so broken that every path forward is a guess. A wrong ruling costs visible rework; a parked question costs the session. Every ruling is a ledger entry.
 
-## Security Defaults
+At a retry cap with open findings: rule on each — reviewer wrong, park it with why the work stands; real but nothing downstream builds on it, park it deferred; real and load-bearing, rule on the smallest change that unblocks dependent work and carry it into the next dispatch. Every adjudication is a ledger entry; a silent discard is forbidden.
 
-Worker permissions are in the routing table. Destructive operations require explicit user approval. Role files are trusted executable instructions; never import third-party role definitions blindly.
+## Permissions
 
-## Context Budget
+Worker permissions are the routing table's tiers:
 
-The main agent sees only: task id, status, short summary, key findings, evidence, unresolved issues, recommended next steps. Never raw transcripts, full file contents, or complete command output. When more detail is needed, dispatch a follow-up task instead of expanding context.
+| Tier        | Grants                                                                                                      |
+| ----------- | ----------------------------------------------------------------------------------------------------------- |
+| `read-only` | read files and run non-mutating commands; no file changes, no staging, no branch or HEAD moves              |
+| `safe-edit` | read-only, plus edits within the dispatch's stated scope and that task's commits; no destructive operations |
+| `execution` | safe-edit for test setup blocking validation, plus the suites and builds the dispatch names                 |
+
+Destructive operations require explicit user approval.
+
+## Context Sharing
+
+Reference prior results by workspace path: `task_001-report.md`, not pasted summaries. The main agent sees only the return contract — task id, status, one-line summary, concerns, workspace paths — never the worker's transcript, full file contents, or complete command output. When a later task needs detail, the brief file or the dispatch's context slot references the report path; the worker reads the file itself — reading a file costs the worker, pasting costs you forever. When your own context needs more, read the report file from disk or dispatch a follow-up task instead of expanding context.
 
 ## Common Rationalizations
 
-| Excuse                                          | Reality                                                                                                                        |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Dispatching is overhead; I'll do it myself      | Main-agent execution is the most expensive seat in the session. Dispatch.                                                      |
-| One more retry will converge                    | Past the retry cap the failure is structural. Escalate the worker or replan.                                                   |
-| The fix was small; skip the recheck             | Unverified fixes are how regressions land. Every fix gets a recheck.                                                           |
-| I'll fix this finding inline; it's obvious      | Inline fixes skip review and pollute the orchestrator context. Dispatch it.                                                    |
-| Recording deferred findings is bookkeeping      | Deferred findings nobody reads are silently discarded. Carry and triage them.                                                  |
-| I'll paste the worker's rules to save it a read | Pasting costs orchestrator tokens and drifts from the canonical prompt. Reference `agents/<role>.md`.                          |
-| I'll write a tailored prompt for this subagent  | Improvised prompts are the primary source of format drift. Dispatch Format is the only dispatch: role file reference + packet. |
+| Excuse                                       | Reality                                                                                                                |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Dispatching is overhead; I'll do it myself   | Main-agent execution is the most expensive seat in the session. Dispatch.                                              |
+| One more retry will converge                 | Past the retry cap the failure is structural. Escalate the worker or replan.                                           |
+| The fix was small; skip the recheck          | Unverified fixes are how regressions land. Every fix gets a recheck.                                                   |
+| I'll fix this finding inline; it's obvious   | Inline fixes skip review and pollute the orchestrator context. Dispatch it.                                            |
+| Recording deferred findings is bookkeeping   | Deferred findings nobody reads are silently discarded. Ledger and triage them.                                         |
+| I'll write a tailored prompt for this worker | Improvised prompts are the primary source of format drift. The dispatch is the filled template, nothing else.          |
+| I'll paste the report into the next dispatch | Pasted text stays in your context forever. Pass the workspace path; the worker reads the file itself.                  |
+| The ledger is bookkeeping                    | The ledger is what survives compaction. Controllers without one have re-dispatched entire completed task sequences.    |
+| The worker spawned its own reviewer          | It's a duplicate seat reviewing the same diff; the orchestrator's review is the gate. Flag it as a defect, not rigor.  |
+| I'll just read HEAD~1 for the diff           | HEAD~1 silently drops all but the last commit of a multi-commit task. Record BASE before dispatching; package from it. |

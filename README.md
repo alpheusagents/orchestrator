@@ -43,8 +43,8 @@ flowchart TD
 | ---------------- | --------------------------- | ------------------ |
 | explorer         | read-only inspection        | read-only          |
 | researcher       | read-only, network research | read-only, network |
-| implementer      | code editing                | read/write         |
-| tester           | test execution              | read/execute       |
+| implementer      | code editing                | safe-edit          |
+| tester           | test execution              | execution          |
 | reviewer         | independent review          | read-only          |
 | reviewer-recheck | fix verification            | read-only          |
 
