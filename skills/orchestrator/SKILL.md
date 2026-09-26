@@ -36,9 +36,32 @@ Economy: expensive tokens -> coordination; cheap tokens -> execution. Main conte
 ## Dispatch Discipline
 
 - One dispatch = one task packet. Never paste accumulated prior-task summaries or session history; reference results instead (`task_XXX.result.*`).
-- Dispatch composition: the worker's role file (`agents/<role>.md`) is the authoritative operating contract. A dispatch references it by path — "read this first" — and attaches only the task packet. Never paste, paraphrase, or summarize the role file into the dispatch: pasting costs orchestrator tokens, paraphrasing produces variance, and both drift from the canonical text. The worker reading the file itself is cheap-token work; the orchestrator regenerating it is expensive-token work.
+- Dispatch composition: per Dispatch Format — role-file reference + task packet, nothing else. The role file (`agents/<role>.md`) is the authoritative operating contract; never paste, paraphrase, or summarize it into the dispatch: pasting costs orchestrator tokens, paraphrasing produces variance, and both drift from the canonical text. The worker reading the file itself is cheap-token work; the orchestrator regenerating it is expensive-token work.
 - Batch small same-shape work: several independent edits of the same kind are one dispatch with one review surface, not one dispatch each.
 - Model discipline: always specify the model explicitly when dispatching; an omitted model silently inherits the session's most expensive one. Use the least capable model that can handle the role. Turn count beats token price: cheap models routinely take 2-3x the turns on multi-step work, so a mid-tier model is the floor for reviewers and for implementers working from prose. Reserve the cheapest tier for transcription-like work (the complete code is in the packet) and single-file mechanical edits.
+
+## Dispatch Format
+
+Every dispatch message is exactly two parts, in order:
+
+```
+Your operating contract is <skill_dir>/agents/<role>.md — read it first, then execute this task packet.
+
+Task {
+    id: task_001
+    type: explore
+    objective: <one sentence>
+    context: <prior-result references and facts the worker cannot discover itself>
+    scope: [...]
+    constraints: [...]
+    dependencies: [...]
+    success_criteria: [...]
+}
+```
+
+Field types and definitions are in Task Schema; the per-role field subset is in the role file's Expected input. That message is the whole dispatch. Domain detail — investigation points, report requirements, deliverable structure — is expressed through the packet's `context` and `success_criteria` fields, never as prompt prose beside it. The role file already defines how the worker works; the packet already defines what the worker produces.
+
+`<skill_dir>` is the directory containing this SKILL.md, resolved from the skill's install path at load time. Resolve the role file's full path before dispatching. If a role file cannot be located, mark the task `blocked` and report to the user.
 
 ## Parallelism
 
@@ -48,18 +71,16 @@ Economy: expensive tokens -> coordination; cheap tokens -> execution. Main conte
 
 ## Task Schema
 
-```
-Task {
-    id            # unique, e.g. task_001
-    type          # explore | research | implement | test | review
-    objective     # one-sentence goal
-    context       # compact prior-result summaries and facts the worker cannot discover itself
-    scope         # files/directories the worker may touch
-    constraints   # rules, style, limits; includes non-goals ("do not X")
-    dependencies  # task ids whose results are required
-    success_criteria
-}
-```
+| Field              | Type       | Description                                                                |
+| ------------------ | ---------- | -------------------------------------------------------------------------- |
+| `id`               | `string`   | unique, e.g. `task_001`                                                    |
+| `type`             | enum       | `explore` \| `research` \| `implement` \| `test` \| `review`               |
+| `objective`        | `string`   | one-sentence goal                                                          |
+| `context`          | `string`   | compact prior-result summaries and facts the worker cannot discover itself |
+| `scope`            | `string[]` | files/directories the worker may touch                                     |
+| `constraints`      | `string[]` | rules, style, limits; includes non-goals ("do not X")                      |
+| `dependencies`     | `string[]` | task ids whose results are required                                        |
+| `success_criteria` | `string[]` | what the result must settle                                                |
 
 Worked example:
 
@@ -69,10 +90,10 @@ Task {
     type: implement
     objective: Add slug validation to src/post.ts before publish.
     context: task_001.result.findings — Post.slug is set in publish(), no validation exists.
-    scope: src/post.ts, src/post.test.ts
-    constraints: no schema changes; do not refactor unrelated code; match existing test style
+    scope: [src/post.ts, src/post.test.ts]
+    constraints: [no schema changes, do not refactor unrelated code, match existing test style]
     dependencies: [task_001]
-    success_criteria: invalid slugs rejected with error; tests pass
+    success_criteria: [invalid slugs rejected with error, tests pass]
 }
 ```
 
@@ -84,17 +105,15 @@ Reference prior results compactly: `task_001.result.summary`, `task_001.result.f
 
 ## Result Contract
 
-```
-AgentResult {
-    task_id
-    status            # completed | failed | blocked | needs_followup
-    summary           # short
-    findings
-    evidence          # paths, exit codes, excerpts — not dumps
-    unresolved
-    recommended_next_tasks
-}
-```
+| Field                    | Type       | Description                                              |
+| ------------------------ | ---------- | -------------------------------------------------------- |
+| `task_id`                | `string`   | the dispatched task's id                                 |
+| `status`                 | enum       | `completed` \| `failed` \| `blocked` \| `needs_followup` |
+| `summary`                | `string`   | short                                                    |
+| `findings`               | `string[]` | role contracts may refine the shape                      |
+| `evidence`               | `string[]` | paths, exit codes, excerpts — not dumps                  |
+| `unresolved`             | `string[]` | remaining work for a `needs_followup` result             |
+| `recommended_next_tasks` | `string[]` | task ids or next-step descriptors                        |
 
 Rules:
 
@@ -109,8 +128,8 @@ AgentResult {
     task_id: task_002
     status: completed
     summary: Slug validation added and enforced in publish().
-    findings: Empty/duplicate slugs now throw; valid slugs pass through unchanged.
-    evidence: src/post.ts:41-48; 6/6 tests pass (vitest exit 0)
+    findings: [Empty/duplicate slugs now throw, valid slugs pass through unchanged]
+    evidence: [src/post.ts:41-48, 6/6 tests pass (vitest exit 0)]
     unresolved: []
     recommended_next_tasks: [review task_002 diff]
 }
@@ -183,11 +202,12 @@ The main agent sees only: task id, status, short summary, key findings, evidence
 
 ## Common Rationalizations
 
-| Excuse                                          | Reality                                                                                               |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Dispatching is overhead; I'll do it myself      | Main-agent execution is the most expensive seat in the session. Dispatch.                             |
-| One more retry will converge                    | Past the retry cap the failure is structural. Escalate the worker or replan.                          |
-| The fix was small; skip the recheck             | Unverified fixes are how regressions land. Every fix gets a recheck.                                  |
-| I'll fix this finding inline; it's obvious      | Inline fixes skip review and pollute the orchestrator context. Dispatch it.                           |
-| Recording deferred findings is bookkeeping      | Deferred findings nobody reads are silently discarded. Carry and triage them.                         |
-| I'll paste the worker's rules to save it a read | Pasting costs orchestrator tokens and drifts from the canonical prompt. Reference `agents/<role>.md`. |
+| Excuse                                          | Reality                                                                                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Dispatching is overhead; I'll do it myself      | Main-agent execution is the most expensive seat in the session. Dispatch.                                                      |
+| One more retry will converge                    | Past the retry cap the failure is structural. Escalate the worker or replan.                                                   |
+| The fix was small; skip the recheck             | Unverified fixes are how regressions land. Every fix gets a recheck.                                                           |
+| I'll fix this finding inline; it's obvious      | Inline fixes skip review and pollute the orchestrator context. Dispatch it.                                                    |
+| Recording deferred findings is bookkeeping      | Deferred findings nobody reads are silently discarded. Carry and triage them.                                                  |
+| I'll paste the worker's rules to save it a read | Pasting costs orchestrator tokens and drifts from the canonical prompt. Reference `agents/<role>.md`.                          |
+| I'll write a tailored prompt for this subagent  | Improvised prompts are the primary source of format drift. Dispatch Format is the only dispatch: role file reference + packet. |

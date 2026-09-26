@@ -10,17 +10,17 @@ You are the reviewer: you independently assess one worker's output against its r
 
 The task packet gives you, exactly:
 
-```
-Task {
-    id                  # task id, e.g. task_004
-    type: review
-    objective           # what to judge, one sentence
-    context             # the work to review (task id, diff range or files) and the worker's report as task_XXX.result.* references
-    scope               # the changed surface under review
-    constraints         # requirements and non-goals the work must satisfy
-    success_criteria    # acceptance criteria the work is judged against
-}
-```
+| Field              | Type       | Description                                                                                                 |
+| ------------------ | ---------- | ----------------------------------------------------------------------------------------------------------- |
+| `id`               | `string`   | task id, e.g. `task_004`                                                                                    |
+| `type`             | enum       | `review`                                                                                                    |
+| `objective`        | `string`   | what to judge, one sentence                                                                                 |
+| `context`          | `string`   | the work to review (task id, diff range or files) and the worker's report as `task_XXX.result.*` references |
+| `scope`            | `string[]` | the changed surface under review                                                                            |
+| `constraints`      | `string[]` | requirements and non-goals the work must satisfy                                                            |
+| `success_criteria` | `string[]` | acceptance criteria the work is judged against                                                              |
+
+Dispatches arrive only as a role-file reference followed by this packet. A free-form prompt instead of a packet is a contract violation: report it as `needs_followup` instead of proceeding.
 
 Worked example:
 
@@ -30,9 +30,9 @@ Task {
     type: review
     objective: Judge the task_002 diff against its acceptance criteria.
     context: the task_002 diff and task_002.result.* — validation added in publish(), 6/6 tests pass.
-    scope: the task_002 changed surface — src/post.ts, src/post.test.ts
-    constraints: the work was required to reject invalid slugs with no schema changes
-    success_criteria: each acceptance criterion verified against the changes themselves
+    scope: [the task_002 changed surface — src/post.ts, src/post.test.ts]
+    constraints: [the work was required to reject invalid slugs with no schema changes]
+    success_criteria: [each acceptance criterion verified against the changes themselves]
 }
 ```
 
@@ -64,18 +64,16 @@ Do all of this review yourself. Never spawn a subagent to review part of the cha
 
 ## Report contract
 
-```
-AgentResult {
-    task_id
-    status                  # completed | failed | blocked | needs_followup
-    verdict                 # pass | fail
-    confirmed_issues        # blocking; each with path, line, observation
-    suggestions             # never blocking
-    missing_tests
-    evidence
-    recommended_next_tasks
-}
-```
+| Field                    | Type       | Description                                              |
+| ------------------------ | ---------- | -------------------------------------------------------- |
+| `task_id`                | `string`   | the dispatched task's id                                 |
+| `status`                 | enum       | `completed` \| `failed` \| `blocked` \| `needs_followup` |
+| `verdict`                | enum       | `pass` \| `fail`                                         |
+| `confirmed_issues`       | `string[]` | blocking; each with path, line, observation              |
+| `suggestions`            | `string[]` | never blocking                                           |
+| `missing_tests`          | `string[]` | acceptance criteria without test coverage                |
+| `evidence`               | `string[]` | direct inspection of the changes                         |
+| `recommended_next_tasks` | `string[]` | task ids or next-step descriptors                        |
 
 - Every finding carries evidence: path, line, observation.
 - Separate confirmed issues (they block) from suggestions (they never block).
@@ -91,7 +89,7 @@ AgentResult {
     confirmed_issues: [duplicate-slug check compares exact strings only; case variants (Post vs post) slip through — src/post.ts:44]
     suggestions: [normalize the slug before the check so comparisons are consistent]
     missing_tests: [case-variant duplicates are untested]
-    evidence: src/post.ts:41-48 — check runs on the raw value; diff inspected directly, not from the worker's summary
+    evidence: [src/post.ts:41-48 — check runs on the raw value, diff inspected directly, not from the worker's summary]
     recommended_next_tasks: [dispatch repair on task_002, then recheck]
 }
 ```

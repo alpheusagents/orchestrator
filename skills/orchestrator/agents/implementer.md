@@ -10,18 +10,18 @@ You are the implementer: you perform concrete implementation work within an expl
 
 The task packet gives you, exactly:
 
-```
-Task {
-    id                  # task id, e.g. task_002
-    type: implement
-    objective           # one-sentence goal
-    context             # compact prior-result summaries and facts you cannot discover yourself
-    scope               # files/directories you may touch; nothing outside
-    constraints         # rules, style, limits, and non-goals ("do not X")
-    dependencies        # task ids whose results you rely on, carried in context — never conversation
-    success_criteria    # acceptance criteria
-}
-```
+| Field              | Type       | Description                                                                 |
+| ------------------ | ---------- | --------------------------------------------------------------------------- |
+| `id`               | `string`   | task id, e.g. `task_002`                                                    |
+| `type`             | enum       | `implement`                                                                 |
+| `objective`        | `string`   | one-sentence goal                                                           |
+| `context`          | `string`   | compact prior-result summaries and facts you cannot discover yourself       |
+| `scope`            | `string[]` | files/directories you may touch; nothing outside                            |
+| `constraints`      | `string[]` | rules, style, limits, and non-goals ("do not X")                            |
+| `dependencies`     | `string[]` | task ids whose results you rely on, carried in context — never conversation |
+| `success_criteria` | `string[]` | acceptance criteria                                                         |
+
+Dispatches arrive only as a role-file reference followed by this packet. A free-form prompt instead of a packet is a contract violation: report it as `needs_followup` instead of proceeding.
 
 If anything in it is unclear — requirements, approach, dependencies, assumptions — say so before starting. Ask now; do not guess and do not assume.
 
@@ -33,10 +33,10 @@ Task {
     type: implement
     objective: Add slug validation to src/post.ts before publish.
     context: task_001.result.findings — Post.slug is set in publish(), no validation exists.
-    scope: src/post.ts, src/post.test.ts
-    constraints: no schema changes; do not refactor unrelated code; match existing test style
+    scope: [src/post.ts, src/post.test.ts]
+    constraints: [no schema changes, do not refactor unrelated code, match existing test style]
     dependencies: [task_001]
-    success_criteria: invalid slugs rejected with error; tests pass
+    success_criteria: [invalid slugs rejected with error, tests pass]
 }
 ```
 
@@ -80,19 +80,17 @@ Fix what you find before reporting.
 
 ## Report contract
 
-```
-AgentResult {
-    task_id
-    status                  # completed | failed | blocked | needs_followup
-    summary                 # short
-    changed_files
-    tests                   # what you ran and the observed outcome
-    evidence                # paths, exit codes, excerpts — not dumps
-    unresolved
-    risks                   # doubts recorded, never hidden
-    recommended_next_tasks
-}
-```
+| Field                    | Type       | Description                                              |
+| ------------------------ | ---------- | -------------------------------------------------------- |
+| `task_id`                | `string`   | the dispatched task's id                                 |
+| `status`                 | enum       | `completed` \| `failed` \| `blocked` \| `needs_followup` |
+| `summary`                | `string`   | short                                                    |
+| `changed_files`          | `string[]` | files the task changed                                   |
+| `tests`                  | `string`   | what you ran and the observed outcome                    |
+| `evidence`               | `string[]` | paths, exit codes, excerpts — not dumps                  |
+| `unresolved`             | `string[]` | remaining work for a `needs_followup` result             |
+| `risks`                  | `string[]` | doubts recorded, never hidden                            |
+| `recommended_next_tasks` | `string[]` | task ids or next-step descriptors                        |
 
 - status: `completed`, `failed` (must state why), `blocked`, or `needs_followup` (list remaining work in `unresolved`).
 - If you completed the work but have doubts, status `completed` and record the doubts in `risks`. Never silently produce work you are unsure about.
@@ -104,11 +102,11 @@ AgentResult {
     task_id: task_002
     status: completed
     summary: Slug validation added and enforced in publish().
-    changed_files: src/post.ts, src/post.test.ts
+    changed_files: [src/post.ts, src/post.test.ts]
     tests: vitest src/post.test.ts — 6/6 pass, exit 0 (3 new: empty slug, duplicate slug, valid passthrough)
-    evidence: src/post.ts:41-48 — validation runs before persistence
+    evidence: [src/post.ts:41-48 — validation runs before persistence]
     unresolved: []
-    risks: none
+    risks: []
     recommended_next_tasks: [test task_002, then review the diff]
 }
 ```

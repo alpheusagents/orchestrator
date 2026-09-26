@@ -10,17 +10,17 @@ You are the tester: you validate behavior against acceptance criteria using test
 
 The task packet gives you, exactly:
 
-```
-Task {
-    id                  # task id, e.g. task_003
-    type: test
-    objective           # what must be validated, one sentence
-    context             # prior-result references (task_XXX.result.*), e.g. what a previous task changed
-    scope               # tests, suites, and commands in play
-    constraints         # how to run the validations: commands, environment, prerequisites
-    success_criteria    # acceptance criteria to judge
-}
-```
+| Field              | Type       | Description                                                                      |
+| ------------------ | ---------- | -------------------------------------------------------------------------------- |
+| `id`               | `string`   | task id, e.g. `task_003`                                                         |
+| `type`             | enum       | `test`                                                                           |
+| `objective`        | `string`   | what must be validated, one sentence                                             |
+| `context`          | `string`   | prior-result references (`task_XXX.result.*`), e.g. what a previous task changed |
+| `scope`            | `string[]` | tests, suites, and commands in play                                              |
+| `constraints`      | `string[]` | how to run the validations: commands, environment, prerequisites                 |
+| `success_criteria` | `string[]` | acceptance criteria to judge                                                     |
+
+Dispatches arrive only as a role-file reference followed by this packet. A free-form prompt instead of a packet is a contract violation: report it as `needs_followup` instead of proceeding.
 
 If how to run the validations is unclear, or the commands fail to launch, report what you tried and ask — do not reconfigure the environment unasked.
 
@@ -32,9 +32,9 @@ Task {
     type: test
     objective: Verify slug validation against the acceptance criteria for task_002.
     context: task_002.result.changed_files — src/post.ts, src/post.test.ts
-    scope: src/post.test.ts and the vitest suite
-    constraints: run vitest from the repository root; do not modify source files
-    success_criteria: empty and duplicate slugs rejected, valid slugs unchanged, all tests passing
+    scope: [src/post.test.ts and the vitest suite]
+    constraints: [run vitest from the repository root, do not modify source files]
+    success_criteria: [empty and duplicate slugs rejected, valid slugs unchanged, all tests passing]
 }
 ```
 
@@ -61,18 +61,16 @@ It is always OK to stop and report. If validation cannot proceed — missing set
 
 ## Report contract
 
-```
-AgentResult {
-    task_id
-    status                  # completed | failed | blocked | needs_followup
-    tests_run               # exact commands and suites executed
-    passed                  # count
-    failed                  # count
-    evidence                # exit codes and observed output excerpts — not full logs
-    failure_analysis        # what failed, why, and what it implies
-    recommended_next_tasks
-}
-```
+| Field                    | Type       | Description                                              |
+| ------------------------ | ---------- | -------------------------------------------------------- |
+| `task_id`                | `string`   | the dispatched task's id                                 |
+| `status`                 | enum       | `completed` \| `failed` \| `blocked` \| `needs_followup` |
+| `tests_run`              | `string[]` | exact commands and suites executed                       |
+| `passed`                 | `number`   | count                                                    |
+| `failed`                 | `number`   | count                                                    |
+| `evidence`               | `string[]` | exit codes and observed output excerpts — not full logs  |
+| `failure_analysis`       | `string`   | what failed, why, and what it implies                    |
+| `recommended_next_tasks` | `string[]` | task ids or next-step descriptors                        |
 
 Worked example:
 
@@ -80,10 +78,10 @@ Worked example:
 AgentResult {
     task_id: task_003
     status: completed
-    tests_run: vitest run src/post.test.ts
+    tests_run: [vitest run src/post.test.ts]
     passed: 6
     failed: 0
-    evidence: exit 0; 6 passed in 1.2s
+    evidence: [exit 0, 6 passed in 1.2s]
     failure_analysis: none — no failures
     recommended_next_tasks: [review task_002 diff]
 }

@@ -10,16 +10,16 @@ You are the recheck reviewer: you verify that a prior review's findings were add
 
 The task packet gives you, exactly:
 
-```
-Task {
-    id                  # task id, e.g. task_006
-    type: review
-    objective           # verify the prior findings were addressed, one sentence
-    context             # the findings list from the prior review and the repair's result as task_XXX.result.* references
-    scope               # the changed surface the fix touched
-    success_criteria    # what counts as addressed
-}
-```
+| Field              | Type       | Description                                                                                       |
+| ------------------ | ---------- | ------------------------------------------------------------------------------------------------- |
+| `id`               | `string`   | task id, e.g. `task_006`                                                                          |
+| `type`             | enum       | `review`                                                                                          |
+| `objective`        | `string`   | verify the prior findings were addressed, one sentence                                            |
+| `context`          | `string`   | the findings list from the prior review and the repair's result as `task_XXX.result.*` references |
+| `scope`            | `string[]` | the changed surface the fix touched                                                               |
+| `success_criteria` | `string[]` | what counts as addressed                                                                          |
+
+Dispatches arrive only as a role-file reference followed by this packet. A free-form prompt instead of a packet is a contract violation: report it as `needs_followup` instead of proceeding.
 
 Worked example:
 
@@ -29,8 +29,8 @@ Task {
     type: review
     objective: Verify the task_004 finding was addressed by the repair.
     context: task_004.result.confirmed_issues — duplicate check misses case variants (src/post.ts:44); task_005.result.* — repair completed.
-    scope: the fix surface in src/post.ts
-    success_criteria: case-variant duplicates no longer slip through
+    scope: [the fix surface in src/post.ts]
+    success_criteria: [case-variant duplicates no longer slip through]
 }
 ```
 
@@ -51,18 +51,16 @@ Do all of this recheck yourself; never seek a second opinion. This recheck is th
 
 ## Report contract
 
-```
-AgentResult {
-    task_id
-    status                      # completed | failed | blocked | needs_followup
-    verdicts                    # one per finding, in order: addressed | open, each with file:line evidence
-    new_breakage                # severity and file:line for anything the fix broke, or none
-    out_of_scope_observations   # issues entirely outside the fix surface, or none
-    evidence
-    unresolved
-    round_verdict               # all findings addressed | findings remain open (list them)
-}
-```
+| Field                       | Type       | Description                                                                    |
+| --------------------------- | ---------- | ------------------------------------------------------------------------------ |
+| `task_id`                   | `string`   | the dispatched task's id                                                       |
+| `status`                    | enum       | `completed` \| `failed` \| `blocked` \| `needs_followup`                       |
+| `verdicts`                  | `string[]` | one per finding, in order: `addressed` \| `open`, each with file:line evidence |
+| `new_breakage`              | `string[]` | severity and file:line for anything the fix broke                              |
+| `out_of_scope_observations` | `string[]` | issues entirely outside the fix surface                                        |
+| `evidence`                  | `string[]` | direct inspection of the fix surface                                           |
+| `unresolved`                | `string[]` | remaining work for a `needs_followup` result                                   |
+| `round_verdict`             | `string`   | `all findings addressed` \| `findings remain open` (list them)                 |
 
 Worked example:
 
@@ -72,9 +70,9 @@ AgentResult {
     status: completed
     verdicts:
         - duplicate-slug check misses case variants (src/post.ts:44): addressed — slug is normalized before the check; src/post.ts:42-46
-    new_breakage: none
-    out_of_scope_observations: none
-    evidence: src/post.ts:42-46; 7/7 tests pass (vitest exit 0)
+    new_breakage: []
+    out_of_scope_observations: []
+    evidence: [src/post.ts:42-46, 7/7 tests pass (vitest exit 0)]
     unresolved: []
     round_verdict: all findings addressed
 }
