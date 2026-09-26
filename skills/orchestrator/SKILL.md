@@ -15,7 +15,7 @@ Trigger by natural phrasing ("orchestrate this task", "sub-agent driven developm
 
 At orchestration start, resolve the workspace under the repository root:
 
-1. Ensure `<repo-root>/.orchestrator/` exists with a `.gitignore` containing `*` and `!.gitignore` — the directory ignores everything and is self-contained; create both if absent (idempotent).
+1. Ensure `<repo-root>/.orchestrator/` exists with a `.gitignore` containing `*` — the directory ignores everything, including the `.gitignore` itself; create both if absent (idempotent).
 2. Scan existing `*/progress.md` first lines. A ledger whose first line names this goal (`# Orchestrator ledger — goal: <verbatim goal>`) is this session's workspace: tasks with a completion line are DONE — do not re-dispatch them; resume at the first task without one. A ledger whose last line is a fix round is mid-loop; resume the loop at the next round. A ledger naming a different goal is another session's workspace: leave it alone and start fresh.
 3. New session: create `<YYYY-MM-DD>-<goal-slug>/` with a ledger whose first line is the identity above and whose second line records the session BASE (`git rev-parse HEAD`) — the final review's whole-change diff needs it. Date prefix keeps sessions sortable; the slug keeps them readable; the ledger's first line — not the directory name — is the identity.
 
