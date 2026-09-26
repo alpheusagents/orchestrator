@@ -1,0 +1,16 @@
+ls:
+    .dir: kebab-case
+    .rs: snake_case
+    .js: kebab-case
+    .ts: kebab-case
+
+ignore:
+    - .git
+    - .github
+    - .vscode
+    - __MACOSX
+    - "**/__MACOSX"
+    - .DS_Store
+    - "**/.DS_Store"
+    - node_modules
+    - "**/node_modules"

@@ -1,0 +1,11 @@
+# Normalize line endings for text files
+* text=auto eol=lf
+
+# Windows-native scripts
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Setup for markdown files
+*.md linguist-detectable=true
+*.md linguist-documentation=false
