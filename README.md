@@ -14,12 +14,12 @@ skills add alpheusagents/orchestrator
 
 Trigger the skill by natural phrasing:
 
-```text
-orchestrate a review for this project
+```md
+work on it with sub-agents driven
 ```
 
-```text
-work on it with sub-agents driven
+```md
+orchestrate an implementation for this project
 ```
 
 Optionally, invoke it with `/orchestrate <task>`.
@@ -30,7 +30,7 @@ Optionally, invoke it with `/orchestrate <task>`.
 flowchart TD
     U[User] --> M[<b>Agent</b><br/>orchestrator]
     M -->|understand → decompose| D{Plan}
-    D -->|dispatch| W[<b>Subagents</b><br/>explorer · researcher · implementer · tester · reviewer · reviewer-recheck]
+    D -->|dispatch| W[<b>Subagents</b><br/>explorer · researcher · implementer · tester · reviewer · verifier]
     W -->|structured results| E{Evaluate}
     E -->|incomplete / contradiction / failure| D
     E -->|sufficient| S[Summary]
@@ -39,14 +39,14 @@ flowchart TD
 
 ## Workers
 
-| Worker           | Capability                  | Permission         |
-| ---------------- | --------------------------- | ------------------ |
-| explorer         | read-only inspection        | read-only          |
-| researcher       | read-only, network research | read-only, network |
-| implementer      | code editing                | safe-edit          |
-| tester           | test execution              | execution          |
-| reviewer         | independent review          | read-only          |
-| reviewer-recheck | fix verification            | read-only          |
+| Worker      | Capability                  | Permission         |
+| ----------- | --------------------------- | ------------------ |
+| explorer    | read-only inspection        | read-only          |
+| researcher  | read-only, network research | read-only, network |
+| implementer | code editing                | safe-edit          |
+| tester      | test execution              | execution          |
+| reviewer    | independent review          | read-only          |
+| verifier    | fix verification            | read-only          |
 
 ## License
 
