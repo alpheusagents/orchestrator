@@ -30,7 +30,7 @@ Optionally, invoke it with `/orchestrate <task>`.
 flowchart TD
     U[User] --> M[<b>Agent</b><br/>orchestrator]
     M -->|understand → decompose| D{Plan}
-    D -->|dispatch| W[<b>Subagents</b><br/>explorer · researcher · implementer · tester · reviewer · verifier]
+    D -->|dispatch| W[<b>Subagents</b><br/>explorer · researcher · implementer · tester · debugger · reviewer · verifier]
     W -->|structured results| E{Evaluate}
     E -->|incomplete / contradiction / failure| D
     E -->|sufficient| S[Summary]
@@ -45,6 +45,7 @@ flowchart TD
 | researcher  | read-only, network research | read-only, network |
 | implementer | code editing                | safe-edit          |
 | tester      | test execution              | execution          |
+| debugger    | failure diagnosis           | read-only          |
 | reviewer    | independent review          | read-only          |
 | verifier    | fix verification            | read-only          |
 

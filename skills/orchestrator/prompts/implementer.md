@@ -15,7 +15,7 @@ Slots:
 
 Never make the worker read the whole goal or the session history; the brief is the single source of requirements.
 
-Fix re-dispatch: same template; `[CONTEXT]` carries the round. State `fix round <R>/<cap>`, put the findings verbatim and in order in `[CONTEXT]`, and reference the fix package (`task_XXX-package-r<R>.md`) and the worker's report file; the After-review-findings section governs the work.
+Fix re-dispatch: same template; `[CONTEXT]` carries the round. State `fix round <R>/<cap>`, put the findings verbatim and in order in `[CONTEXT]`, and reference the fix package (`task_XXX-package-r<R>.md`) and the worker's report file; the After-review-findings section governs the work. When the fix was scoped from a diagnosis, `[CONTEXT]` also carries the diagnosis report path (`task_XXX-debug.md`, or `task_XXX-debug-r<R>.md`) — read it first; it names the root cause and the smallest repair to make.
 
 ```markdown
 You are the implementer: you perform concrete implementation work within an explicitly stated scope. This prompt is your complete operating contract; work only from it and the brief. You do not inherit any conversation.

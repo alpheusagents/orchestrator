@@ -16,13 +16,14 @@ Trigger by natural phrasing ("orchestrate this task", "sub-agent driven developm
 At orchestration start, resolve the workspace under the repository root:
 
 1. Ensure `<repo-root>/.orchestrator/` exists with a `.gitignore` containing `*` — the directory ignores everything, including the `.gitignore` itself; create both if absent (idempotent).
-2. Scan existing `*/progress.md` first lines. A ledger whose first line names this goal (`# Orchestrator ledger — goal: <verbatim goal>`) is this session's workspace: tasks with a completion line are DONE — do not re-dispatch them; resume at the first task without one. A ledger whose last line is a fix round is mid-loop; resume the loop at the next round. A ledger naming a different goal is another session's workspace: leave it alone and start fresh.
+2. Scan existing `*/progress.md` first lines. A ledger whose first line names this goal (`# Orchestrator ledger — goal: <verbatim goal>`) is this session's workspace: tasks with a completion line are DONE — do not re-dispatch them; resume at the first task without one. A ledger whose last line is a fix round or a debug diagnosis is mid-loop; resume at the next loop step — the fix round after a diagnosis, the re-diagnosis after a refuted diagnosis, the next round after a fix round. A diagnosis refutation is recorded as a `Ruling:` line naming the re-diagnosis file, so the next loop step is always derivable from the ledger alone. A ledger naming a different goal is another session's workspace: leave it alone and start fresh.
 3. New session: create `<YYYY-MM-DD>-<goal-slug>/` with a ledger whose first line is the identity above and whose second line records the session BASE (`git rev-parse HEAD`) — the final review's whole-change diff needs it. Date prefix keeps sessions sortable; the slug keeps them readable; the ledger's first line — not the directory name — is the identity.
 
 The ledger is the recovery map: conversation memory does not survive compaction, and controllers that lost their place have re-dispatched entire completed task sequences. After compaction, trust the ledger and `git log` over your own recollection. Record in it, one line each:
 
 - `Task <N>: complete (commits <base7>..<head7>, review pass)` for code tasks, `Task <N>: complete (evidence: <one-liner>)` for non-code tasks — or `<K> parked` after a tripped breaker
 - `Task <N>: fix round <R>/<cap> (<X> addressed, <Y> open — <finding one-liners>)`
+- `Task <N>: diagnosed — <root-cause one-liner> (task_XXX-debug[-r<R>].md)` — the diagnosis exists; resume at the fix dispatch, not a fresh diagnosis
 - `Task <N>: deferred: <finding one-liner>`
 - `Task <N>: blocked — <why>`
 - `Ruling: <what you decided> — <why>`
@@ -33,6 +34,7 @@ Session artifacts live in the workspace alongside the ledger, one file per task:
 | --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | `task_XXX-brief.md`   | orchestrator | full requirements; exact values appear only here; written once at decomposition, reused by every re-dispatch and resume         |
 | `task_XXX-report.md`  | worker       | the worker's full report; fix reports append to it                                                                              |
+| `task_XXX-debug.md`   | debugger     | the diagnosis: reproduction, causal chain, root cause, proposed smallest repair                                                 |
 | `task_XXX-package.md` | orchestrator | review package: commit list + `--stat` + full diff; produced with shell redirection, never read into the orchestrator's context |
 | `task_XXX-review.md`  | reviewer     | the review report                                                                                                               |
 | `task_XXX-verify.md`  | verifier     | per-finding verdicts                                                                                                            |
@@ -69,14 +71,15 @@ Keep inline: choosing the next step, resolving worker contradictions, judging ev
 
 Capability-based, not personality-based. Route from this table; do not read the template's prompt skeleton yourself — read the fill instructions, fill, dispatch.
 
-| Role        | Capability                                       | Permission                            | Route when                                           | Template                 |
-| ----------- | ------------------------------------------------ | ------------------------------------- | ---------------------------------------------------- | ------------------------ |
-| explorer    | read-only repository investigation               | read-only                             | repository understanding the main agent lacks        | `prompts/explorer.md`    |
-| researcher  | external or documentation research               | read-only; network only when required | the answer lives outside the repository              | `prompts/researcher.md`  |
-| implementer | implementation within an explicitly stated scope | safe-edit                             | the objective creates or modifies code or files      | `prompts/implementer.md` |
-| tester      | test execution and validation                    | execution                             | acceptance criteria need observed evidence from runs | `prompts/tester.md`      |
-| reviewer    | independent assessment of one worker's output    | read-only                             | medium/high-risk work beyond deterministic checks    | `prompts/reviewer.md`    |
-| verifier    | fix verification, one verdict per finding        | read-only                             | confirmed findings were repaired and need verdicts   | `prompts/verifier.md`    |
+| Role        | Capability                                                                | Permission                            | Route when                                           | Template                 |
+| ----------- | ------------------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- | ------------------------ |
+| explorer    | read-only repository investigation                                        | read-only                             | repository understanding the main agent lacks        | `prompts/explorer.md`    |
+| researcher  | external or documentation research                                        | read-only; network only when required | the answer lives outside the repository              | `prompts/researcher.md`  |
+| implementer | implementation within an explicitly stated scope                          | safe-edit                             | the objective creates or modifies code or files      | `prompts/implementer.md` |
+| tester      | test execution and validation                                             | execution                             | acceptance criteria need observed evidence from runs | `prompts/tester.md`      |
+| debugger    | failure diagnosis: reproduce, isolate root cause, propose smallest repair | read-only                             | a failure needs a root cause before repair is scoped | `prompts/debugger.md`    |
+| reviewer    | independent assessment of one worker's output                             | read-only                             | medium/high-risk work beyond deterministic checks    | `prompts/reviewer.md`    |
+| verifier    | fix verification, one verdict per finding                                 | read-only                             | confirmed findings were repaired and need verdicts   | `prompts/verifier.md`    |
 
 Economy: expensive tokens -> coordination; cheap tokens -> execution. Main context -> compact evidence; worker context -> detailed execution.
 
@@ -86,7 +89,7 @@ Economy: expensive tokens -> coordination; cheap tokens -> execution. Main conte
 - Briefs are the single source of requirements: exact values (numbers, magic strings, signatures, test cases) appear only in the brief file, never in the dispatch prose or your own context. A fresh worker needs its brief, the interfaces it touches, and the binding constraints — nothing else.
 - Batch small same-shape work: several independent edits of the same kind are one dispatch with one review surface, not one dispatch each.
 - Never paste a worker's report, a diff, or a file dump into a dispatch; write it to the workspace and pass the path. Exception: finding one-liners for a fix or verification dispatch go in verbatim — they scope the work being judged.
-- Model discipline: always set the dispatch call's model parameter explicitly (`[MODEL]` is never a prompt slot); an omitted model silently inherits the session's most expensive one. Use the least capable model that can handle the role. Turn count beats token price: cheap models routinely take 2-3x the turns on multi-step work, so a mid-tier model is the floor for reviewers and for implementers working from prose. Reserve the cheapest tier for transcription-like work (the complete code is in the brief) and single-file mechanical edits.
+- Model discipline: always set the dispatch call's model parameter explicitly (`[MODEL]` is never a prompt slot); an omitted model silently inherits the session's most expensive one. Use the least capable model that can handle the role. Turn count beats token price: cheap models routinely take 2-3x the turns on multi-step work, so a mid-tier model is the floor for reviewers, debuggers, and implementers working from prose. Reserve the cheapest tier for transcription-like work (the complete code is in the brief) and single-file mechanical edits.
 - Record `BASE` (`git rev-parse HEAD`) before dispatching an implementer; the review package needs it — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task.
 
 ## Dispatch Format
@@ -109,7 +112,7 @@ If a template cannot be located, mark the task `blocked` and report to the user.
 
 1. Max task depth: 1 — no worker spawns workers.
 2. Max active tasks: 4 concurrent.
-3. Max retries: 3 per task; then mark blocked and report.
+3. Max retries: 3 per task; then mark blocked and report. Debugger dispatches are diagnosis, not retries: they do not consume a retry (re-diagnosis is capped at 2 by Diagnosis).
 4. Max orchestration rounds: 8 delegate-evaluate cycles; then escalate to the user.
 
 A retry must change something (context, scope, approach, worker, decomposition); never repeat identical inputs.
@@ -130,11 +133,15 @@ Per-task reviews are task-scoped gates. A broad whole-change review happens once
 
 1. After an implementer reports, generate the review package into the workspace (`git log --oneline <BASE>..<HEAD>`, `git diff --stat`, `git diff -U10` — one file, `task_XXX-package.md`). Produce it with shell redirection — never read the diff into your own context. Never dispatch a reviewer without a package file.
 2. Dispatch the reviewer with the package path, the brief path, the worker's report path, and the binding constraints copied verbatim. Do not pre-judge findings and never instruct a reviewer to ignore an issue; let findings surface and adjudicate them yourself.
-3. On `fail` — or any confirmed blocking finding — enter the fix loop: send the findings verbatim back to the same implementer (rounds 1-3); if the harness cannot resume it, dispatch a fresh implementer carrying the brief, report path, and findings — the report file is the persistent memory either way. Every fix round ends with one scoped re-review (`verifier`) over a fresh fix package (`task_XXX-package-r<R>.md`, diffed since the last review); new breakage joins the open findings. Record each round in the ledger.
+3. On `fail` — or any confirmed blocking finding — enter the fix loop: send the findings verbatim back to the same implementer (rounds 1-3); if the harness cannot resume it, dispatch a fresh implementer carrying the brief, report path, and findings — the report file is the persistent memory either way. When the findings do not localize the defect — no root cause to repair against — diagnose first (Diagnosis below) before scoping the fix. Every fix round ends with one scoped re-review (`verifier`) over a fresh fix package (`task_XXX-package-r<R>.md`, diffed since the last review); new breakage joins the open findings. Record each round in the ledger.
 4. Every repair's verification must be present before the next task starts; unreviewed fixes are how regressions land.
 5. When the review passes — or the retry cap is hit and open findings are adjudicated (see Rulings) — ledger the completion and move on. Deferred findings are ledgered and triaged at final review; a finding silently dropped is forbidden.
 
 Suggestions never block. Never re-run a suite the worker already ran; its report file is the test evidence.
+
+## Diagnosis
+
+Diagnosis is not a fix round and consumes no retry. When the findings do not localize the defect, dispatch a debugger first (diagnosis only), then scope the fix from its diagnosis. For debugger-scoped fixes, the fix dispatch's context carries the `task_XXX-debug.md` path alongside the findings; the implementer reads the diagnosis itself. A wrong or refuted diagnosis gets a re-diagnosis dispatch writing `task_XXX-debug-r<R>.md`, never an overwrite of the first; record the refutation as a `Ruling:` ledger line naming the re-diagnosis file. A diagnosis refuted twice (re-diagnoses up to -r2) is not converging — stop re-diagnosing, treat it as a `Wrong approach` and replan.
 
 ## Final Review and Summary
 
@@ -146,16 +153,16 @@ Per-task reviews are gates; one whole-change review closes the session:
 
 ## Failure Classification
 
-| Class                | Response                |
-| -------------------- | ----------------------- |
-| Transient            | Retry                   |
-| Insufficient context | Retry with more context |
-| Implementation bug   | Dispatch repair task    |
-| Wrong approach       | Replan                  |
-| Permission problem   | Blocked; report to user |
-| Unknown              | Delegate investigation  |
+| Class                | Response                                                                         |
+| -------------------- | -------------------------------------------------------------------------------- |
+| Transient            | Retry                                                                            |
+| Insufficient context | Retry with more context                                                          |
+| Implementation bug   | Dispatch repair task; diagnose via debugger first when the root cause is unknown |
+| Wrong approach       | Replan                                                                           |
+| Permission problem   | Blocked; report to user                                                          |
+| Unknown              | Delegate investigation; debugger when the unknown is a failure's root cause      |
 
-When a task survives repeated retries, stop varying inputs and change the worker: dispatch a fresh implementer on a more capable model, framed as "prior attempts failed N times; you own it now", with the findings carried in context. A loop that survives retries usually means the worker cannot see its own problem; fresh eyes and a capability bump in one move. Every repair gets a verification (prompts/verifier.md) that verdicts the findings and inspects only the fix surface.
+When a task survives repeated retries, stop varying inputs and change the worker: dispatch a fresh implementer on a more capable model, framed as "prior attempts failed N times; you own it now", with the findings carried in context. A loop that survives retries usually means the worker cannot see its own problem; fresh eyes and a capability bump in one move. When the root cause is unknown, dispatch a debugger (prompts/debugger.md) before the repair. Every repair gets a verification (prompts/verifier.md) that verdicts the findings and inspects only the fix surface.
 
 ## Rulings, Not Stalls
 
@@ -189,6 +196,7 @@ Reference prior results by workspace path: `task_001-report.md`, not pasted summ
 | I'll fix this finding inline; it's obvious   | Inline fixes skip review and pollute the orchestrator context. Dispatch it.                                            |
 | Recording deferred findings is bookkeeping   | Deferred findings nobody reads are silently discarded. Ledger and triage them.                                         |
 | I'll write a tailored prompt for this worker | Improvised prompts are the primary source of format drift. The dispatch is the filled template, nothing else.          |
+| I'll just try a fix; diagnosis is overhead   | A fix scoped without a verified diagnosis is a guess. Dispatch the debugger first.                                     |
 | I'll paste the report into the next dispatch | Pasted text stays in your context forever. Pass the workspace path; the worker reads the file itself.                  |
 | The ledger is bookkeeping                    | The ledger is what survives compaction. Controllers without one have re-dispatched entire completed task sequences.    |
 | The worker spawned its own reviewer          | It's a duplicate seat reviewing the same diff; the orchestrator's review is the gate. Flag it as a defect, not rigor.  |
