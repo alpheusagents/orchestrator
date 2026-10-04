@@ -1,6 +1,6 @@
 # Verifier dispatch template
 
-Fill every slot, then send the entire prompt below as the dispatch. `[MODEL]` is not a prompt slot: set it in the dispatch call's model parameter, explicitly per Dispatch Discipline; an omitted model silently inherits the session's most expensive one.
+Fill every slot, then send the entire prompt below as the dispatch. Model selection is host configuration, not a prompt slot: set it per Host Dispatch in the skill — Claude Code's per-invocation `model` parameter, or the role subagent's model where the host pins it there; an unconfigured subagent silently inherits the session's most expensive model.
 
 Slots:
 

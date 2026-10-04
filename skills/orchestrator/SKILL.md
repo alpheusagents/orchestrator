@@ -5,11 +5,29 @@ description: Use when the user is looking for orchestration or sub-agents driven
 
 # Orchestrator
 
-Invariant: main agent = understand, decompose, dispatch, evaluate, replan, summarize. Sub-agents = actual execution. The main agent never explores, implements, tests, debugs, or researches itself; it dispatches instead.
+Invariant: main agent = understand, decompose, dispatch, evaluate, replan, summarize. Sub-agents = actual execution. The main agent never explores, implements, tests, debugs, or researches itself; it dispatches instead. If the host exposes no subagent/agent-dispatch tool, or the required role has no valid target, report `blocked` naming the missing capability — never execute the work inline. Inline exploration, research, implementation, testing, debugging, or review is a contract violation, not a fallback.
 
 ## Invocation
 
 Trigger by natural phrasing ("orchestrate this task", "sub-agent driven development") or the `/orchestrate` slash command, with the task as arguments. If the host runtime supports command registration, `/orchestrate` may be registered as a command that loads this skill and passes the arguments as the task.
+
+## Host Dispatch
+
+The invariant holds across hosts; only the mechanism differs. Identify the host by its dispatch tool, then dispatch through it. A dispatch hands the role's filled template to a subagent as the entire prompt — the main agent never performs the role's work itself.
+
+Roles are capabilities, not host-specific names. Before dispatching, map the role to a subagent of the right class:
+
+- **Read-only roles** (explorer, researcher, reviewer, verifier, debugger): dispatch to a read-only subagent.
+- **Write/execute roles** (implementer, tester): dispatch to a general-purpose subagent that can edit files and run commands.
+
+| Host           | Dispatch tool                                   | Read-only target                       | Write/execute target | Model control                                                                                                                                      | Notes                                                                                                                                                   |
+| -------------- | ----------------------------------------------- | -------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OpenCode       | `task` with `subagent_type`                     | `explore`; `scout` when network needed | `general`            | no per-call model parameter — set the model on the role agent in host config; an unconfigured subagent inherits the primary (most expensive) model | define role subagents in `opencode.json` under `agent.*` or `.opencode/agent(s)/*.md`; gate spawnable types with `permission.task`                      |
+| Codex          | subagent spawn (confirm the exact tool in-host) | read-only subagent                     | general subagent     | confirm in-host; do not assume a per-invocation model parameter                                                                                    | Codex has subagents; verify the spawn tool and per-subagent model before dispatching. If no dispatch tool is exposed, report `blocked`                  |
+| Claude Code    | `Agent` (alias `Task`) with `subagent_type`     | `Explore` / `Plan`                     | `general-purpose`    | per-invocation `model` parameter, the subagent's `model` frontmatter, or `CLAUDE_CODE_SUBAGENT_MODEL`                                              | define role subagents in `.claude/agents/*.md`; restrict spawnable types with `Agent(type)`; a skill can fork a subagent with `context: fork` + `agent` |
+| Any other host | probe for a subagent/agent tool                 | —                                      | —                    | —                                                                                                                                                  | If the host exposes no dispatch mechanism, report `blocked` naming the missing capability rather than executing the role's work inline                  |
+
+Where a host needs named role subagents (OpenCode, Claude Code, Codex), create them once so their model tiers are pinned; without them, a dispatch still works but the subagent inherits the primary model. The routing table below stays capability-based; the concrete `subagent_type` per host is the table above.
 
 ## Workspace and Ledger
 
@@ -69,7 +87,7 @@ Keep inline: choosing the next step, resolving worker contradictions, judging ev
 
 ## Routing
 
-Capability-based, not personality-based. Route from this table; do not read the template's prompt skeleton yourself — read the fill instructions, fill, dispatch.
+Capability-based, not personality-based. Route from this table; do not read the template's prompt skeleton yourself — read the fill instructions, fill, dispatch. This table names capabilities; the concrete `subagent_type` for each role on the current host is in Host Dispatch.
 
 | Role        | Capability                                                                | Permission                            | Route when                                           | Template                 |
 | ----------- | ------------------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- | ------------------------ |
@@ -89,7 +107,9 @@ Economy: expensive tokens -> coordination; cheap tokens -> execution. Main conte
 - Briefs are the single source of requirements: exact values (numbers, magic strings, signatures, test cases) appear only in the brief file, never in the dispatch prose or your own context. A fresh worker needs its brief, the interfaces it touches, and the binding constraints — nothing else.
 - Batch small same-shape work: several independent edits of the same kind are one dispatch with one review surface, not one dispatch each.
 - Never paste a worker's report, a diff, or a file dump into a dispatch; write it to the workspace and pass the path. Exception: finding one-liners for a fix or verification dispatch go in verbatim — they scope the work being judged.
-- Model discipline: always set the dispatch call's model parameter explicitly (`[MODEL]` is never a prompt slot); an omitted model silently inherits the session's most expensive one. Use the least capable model that can handle the role. Turn count beats token price: cheap models routinely take 2-3x the turns on multi-step work, so a mid-tier model is the floor for reviewers, debuggers, and implementers working from prose. Reserve the cheapest tier for transcription-like work (the complete code is in the brief) and single-file mechanical edits.
+- Model discipline: use the least capable model that can handle the role. Where the host supports per-dispatch model selection (Claude Code's `model` parameter), set it explicitly; where model is a property of the role subagent in host config (OpenCode, Codex), pin it on the role subagent. An unconfigured subagent silently inherits the primary, most expensive model. Turn count beats token price: cheap models routinely take 2-3x the turns on multi-step work, so a mid-tier model is the floor for reviewers, debuggers, and implementers working from prose. Reserve the cheapest tier for transcription-like work (the complete code is in the brief) and single-file mechanical edits.
+
+- Model selection is not a prompt slot. Never write a `[MODEL]` slot into a dispatch prompt; it is a host-configuration concern, per Host Dispatch.
 - Record `BASE` (`git rev-parse HEAD`) before dispatching an implementer; the review package needs it — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task.
 
 ## Dispatch Format
@@ -97,7 +117,7 @@ Economy: expensive tokens -> coordination; cheap tokens -> execution. Main conte
 Every dispatch is the role's template, filled and sent whole:
 
 1. Read `<skill_dir>/prompts/<role>.md`. `<skill_dir>` is the directory containing this SKILL.md, resolved from the skill's install path at load time — the orchestrator resolves it, the worker never does.
-2. Fill every slot per the template's fill instructions. `[MODEL]` is always explicit.
+2. Fill every prompt slot per the template's fill instructions; select the model per Host Dispatch, never as a prompt slot.
 3. Send the entire filled prompt as the dispatch. Do not improvise around it, summarize it, or append free-form prose: improvised prompts are the primary source of format drift, and the templates are the distilled, session-tested versions of every rule the worker needs.
 
 If a template cannot be located, mark the task `blocked` and report to the user. Never import third-party templates.

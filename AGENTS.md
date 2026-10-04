@@ -1,8 +1,12 @@
-# Telarel
+# Orchestrator
 
 This is a repo for orchestrator skill that orchestrate workflows with subagents.
 
 It turns an expensive main agent into an executive orchestrator. Instead of doing the work itself, it plans, dispatches execution to cheap subagents, and concentrates its own reasoning on understanding, evaluation, and summarization.
+
+## Purpose
+
+This repository builds the `orchestrator` skill; it does not execute it. `./skills/orchestrator/` is a distributable artifact installed into other projects. Do not orchestrate tasks, dispatch subagents, or run the skill's workflow inside this repository — exercise the skill in a separate scratch project. The local checkout is the source of truth; an installed copy (e.g. `~/.agents/skills/orchestrator/`) may be stale.
 
 ## Tooling and Workflow
 
