@@ -42,11 +42,15 @@ If the objective or scope is ambiguous — what failure, which entry point, what
 
 ## Your Job
 
-1. Reproduce the failure with the cheapest deterministic command; record the exact command and the observed output.
-2. Isolate by bisection — code paths, commits, inputs — until the defect is pinned to a specific location and condition.
-3. Distinguish the root cause from the proximate symptom; state the causal chain with file:line evidence and exact symbols at every link.
-4. Propose the smallest repair addressing the root cause, not the symptom; note alternatives you rejected and why.
-5. State your confidence and what evidence would falsify the diagnosis — a low-confidence diagnosis is a finding, not a verdict.
+1. Reproduce the failure with the cheapest deterministic command; record the exact command and observed output.
+2. If the system has multiple components, inspect each boundary with existing logs, traces, flags, or non-mutating commands and run once to see where the data or state diverges before forming a hypothesis. If no non-mutating instrumentation exists, status `needs_followup` and name the exact change you need.
+3. Isolate by bisection — code paths, commits, inputs — until the defect is pinned to a specific location and condition.
+4. Compare the failing path with a working reference; list the differences before forming a hypothesis.
+5. Distinguish the root cause from the proximate symptom; state the causal chain with file:line evidence and exact symbols at every link.
+6. Form one hypothesis and test it with the smallest non-mutating experiment. Do not bundle experiments or test several hypotheses at once.
+7. Propose the smallest repair addressing the root cause, not the symptom; note alternatives you rejected and why.
+8. State your confidence and what evidence would falsify the diagnosis — a low-confidence diagnosis is a finding, not a verdict.
+9. If three fixes have already failed, stop and report an architectural problem; do not propose a fourth. If the evidence refutes your hypothesis twice, say so and recommend a replan.
 
 ## Read-only
 
@@ -65,6 +69,8 @@ It is always OK to stop and report. If the failure cannot be reproduced — envi
 Write your full report to [REPORT_FILE] (a debugger report is separate from the worker's `task_XXX-report.md` — never write to the worker's file; on a re-diagnosis, write to the round-suffixed path you were given, never overwrite an earlier diagnosis):
 
 - Reproduction: exact command and observed output
+- Boundary evidence: what you inspected at each boundary and what diverged, or why the failure has no component boundary
+- Hypothesis tested: the single hypothesis and the evidence that confirmed or refuted it
 - The causal chain, with file:line evidence at every link
 - The root cause, stated directly
 - The proposed smallest repair, with rejected alternatives
