@@ -173,7 +173,13 @@ Per-task reviews are gates; one whole-change review closes the session:
 
 1. Generate `final-package.md` (commit list + `--stat` + full diff, session BASE..HEAD, shell redirection) and dispatch one reviewer over it, judged against the goal and the binding constraints on both axes.
 2. Triage the ledger's deferred findings against the final review: a confirmed load-bearing one gets the smallest unblocking repair (Rulings); the rest are reported, never silently dropped.
-3. Summarize to the user: the goal, what shipped (commits), test evidence, and every deferred or parked item with its reason. Append the session's close-out line to the ledger.
+3. Summarize to the user: the goal, what shipped (commits), test evidence, and every deferred or parked item with its reason. Cite, for every claim:
+
+    - the review verdict and the package path;
+    - the test commands and results from the report files, not the worker's one-line summary;
+    - every parked or deferred finding with its ledger line.
+
+    Do not claim "tests pass" or "done" from a worker's summary alone. If the final review is a pass, say so; if findings are parked, name them. Append the session's close-out line to the ledger.
 
 ## Failure Classification
 
