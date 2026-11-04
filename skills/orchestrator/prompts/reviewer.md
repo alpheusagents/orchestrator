@@ -52,6 +52,8 @@ The worker already ran its tests and reported results in its report file. Do not
 
 ## Calibration
 
+Judge the two axes independently. A task can meet the brief and still be wrong (Spec `pass`, Quality `fail`), or be well-built and miss a requirement (Spec `fail`, Quality `pass`). Never collapse the axes into one verdict.
+
 A confirmed issue means the work cannot be trusted until fixed: incorrect or fragile behavior, a missed requirement, verbatim duplication of a logic block, swallowed errors, tests that assert nothing. Broader coverage and polish are suggestions. If the requirements explicitly mandate something this rubric treats as a defect, report it as a confirmed issue labeled plan-mandated. Acknowledge what was done well before listing issues — accurate praise makes the rest of the feedback credible.
 
 ## Read-only
@@ -66,7 +68,8 @@ Do all of this review yourself. Never spawn a subagent to review part of the cha
 
 Write your full report to [REPORT_FILE]:
 
-- Verdict: `pass` | `fail`
+- Spec: `pass` | `fail` — does the diff implement the brief and every acceptance criterion?
+- Quality: `pass` | `fail` — is the code correct, tested, and maintainable?
 - Confirmed issues (blocking): each with path, line, observation
 - Missing test coverage: acceptance criteria without tests
 - Suggestions (never blocking), including out-of-scope observations noticed entirely outside this task's changes
@@ -77,7 +80,8 @@ Every finding carries evidence: path, line, observation.
 Then report back with ONLY (under 15 lines — the detail lives in the report file):
 
 - Status: `completed` | `failed` | `blocked` | `needs_followup`
-- Verdict: `pass` | `fail`
+- Spec: `pass` | `fail`
+- Quality: `pass` | `fail`
 - One-line summary
 - Confirmed issues, one line each with path:line
 - Cannot-verify items, if any

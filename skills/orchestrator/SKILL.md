@@ -42,7 +42,7 @@ At orchestration start, resolve the workspace under the repository root:
 
 The ledger is the recovery map: conversation memory does not survive compaction, and controllers that lost their place have re-dispatched entire completed task sequences. After compaction, trust the ledger and `git log` over your own recollection. Record in it, one line each:
 
-- `Task <N>: complete (commits <base7>..<head7>, review pass)` for code tasks, `Task <N>: complete (evidence: <one-liner>)` for non-code tasks — or `<K> parked` after a tripped breaker
+- `Task <N>: complete (commits <base7>..<head7>, review pass: spec+quality)` for code tasks, `Task <N>: complete (evidence: <one-liner>)` for non-code tasks — or `<K> parked` after a tripped breaker
 - `Task <N>: session <id> (<role>)` — written at dispatch when the host returns a resume handle; omit it on hosts that do not
 - `Task <N>: fix round <R>/<cap> (<X> addressed, <Y> open — <finding one-liners>)`
 - `Task <N>: diagnosed — <root-cause one-liner> (task_XXX-debug[-r<R>].md)` — the diagnosis exists; resume at the fix dispatch, not a fresh diagnosis
@@ -157,9 +157,9 @@ Per-task reviews are task-scoped gates. A broad whole-change review happens once
 
 1. After an implementer reports, generate the review package into the workspace (`git log --oneline <BASE>..<HEAD>`, `git diff --stat`, `git diff -U10` — one file, `task_XXX-package.md`). Produce it with shell redirection — never read the diff into your own context. Never dispatch a reviewer without a package file.
 2. Dispatch the reviewer with the package path, the brief path, the worker's report path, and the binding constraints copied verbatim. Do not pre-judge findings and never instruct a reviewer to ignore an issue; let findings surface and adjudicate them yourself.
-3. On `fail` — or any confirmed blocking finding — enter the fix loop: send the findings verbatim back to the same implementer session using the host's resume handle (Host Dispatch; rounds 1-3). If the host cannot resume it, dispatch a fresh implementer carrying the brief, report path, and findings — the report file is the persistent memory either way. When the findings do not localize the defect — no root cause to repair against — diagnose first (Diagnosis below) before scoping the fix. Every fix round ends with one scoped re-review (`verifier`) over a fresh fix package (`task_XXX-package-r<R>.md`, diffed since the last review); new breakage joins the open findings. Record each round in the ledger.
+3. On `fail` in either axis — or any confirmed blocking finding — enter the fix loop: send the findings verbatim back to the same implementer session using the host's resume handle (Host Dispatch; rounds 1-3). If the host cannot resume it, dispatch a fresh implementer carrying the brief, report path, and findings — the report file is the persistent memory either way. When the findings do not localize the defect — no root cause to repair against — diagnose first (Diagnosis below) before scoping the fix. Every fix round ends with one scoped re-review (`verifier`) over a fresh fix package (`task_XXX-package-r<R>.md`, diffed since the last review); new breakage joins the open findings. Record each round in the ledger.
 4. Every repair's verification must be present before the next task starts; unreviewed fixes are how regressions land.
-5. When the review passes — or the retry cap is hit and open findings are adjudicated (see Rulings) — ledger the completion and move on. Deferred findings are ledgered and triaged at final review; a finding silently dropped is forbidden.
+5. When both axes pass — or the retry cap is hit and open findings are adjudicated (see Rulings) — ledger the completion and move on. Deferred findings are ledgered and triaged at final review; a finding silently dropped is forbidden.
 
 Suggestions never block. Never re-run a suite the worker already ran; its report file is the test evidence.
 
@@ -171,7 +171,7 @@ Diagnosis is not a fix round and consumes no retry. When the findings do not loc
 
 Per-task reviews are gates; one whole-change review closes the session:
 
-1. Generate `final-package.md` (commit list + `--stat` + full diff, session BASE..HEAD, shell redirection) and dispatch one reviewer over it, judged against the goal and the binding constraints.
+1. Generate `final-package.md` (commit list + `--stat` + full diff, session BASE..HEAD, shell redirection) and dispatch one reviewer over it, judged against the goal and the binding constraints on both axes.
 2. Triage the ledger's deferred findings against the final review: a confirmed load-bearing one gets the smallest unblocking repair (Rulings); the rest are reported, never silently dropped.
 3. Summarize to the user: the goal, what shipped (commits), test evidence, and every deferred or parked item with its reason. Append the session's close-out line to the ledger.
 
