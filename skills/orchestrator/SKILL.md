@@ -20,14 +20,15 @@ Roles are capabilities, not host-specific names. Before dispatching, map the rol
 - **Read-only roles** (explorer, researcher, reviewer, verifier, debugger): dispatch to a read-only subagent.
 - **Write/execute roles** (implementer, tester): dispatch to a general-purpose subagent that can edit files and run commands.
 
-| Host           | Dispatch tool                                   | Read-only target                       | Write/execute target | Model control                                                                                                                                      | Notes                                                                                                                                                   |
-| -------------- | ----------------------------------------------- | -------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OpenCode       | `task` with `subagent_type`                     | `explore`; `scout` when network needed | `general`            | no per-call model parameter — set the model on the role agent in host config; an unconfigured subagent inherits the primary (most expensive) model | define role subagents in `opencode.json` under `agent.*` or `.opencode/agent(s)/*.md`; gate spawnable types with `permission.task`                      |
-| Codex          | subagent spawn (confirm the exact tool in-host) | read-only subagent                     | general subagent     | confirm in-host; do not assume a per-invocation model parameter                                                                                    | Codex has subagents; verify the spawn tool and per-subagent model before dispatching. If no dispatch tool is exposed, report `blocked`                  |
-| Claude Code    | `Agent` (alias `Task`) with `subagent_type`     | `Explore` / `Plan`                     | `general-purpose`    | per-invocation `model` parameter, the subagent's `model` frontmatter, or `CLAUDE_CODE_SUBAGENT_MODEL`                                              | define role subagents in `.claude/agents/*.md`; restrict spawnable types with `Agent(type)`; a skill can fork a subagent with `context: fork` + `agent` |
-| Any other host | probe for a subagent/agent tool                 | —                                      | —                    | —                                                                                                                                                  | If the host exposes no dispatch mechanism, report `blocked` naming the missing capability rather than executing the role's work inline                  |
+| Host                 | Notes                                                     |
+| -------------------- | --------------------------------------------------------- |
+| OpenCode V1 (1.x)    | [V1 notes](docs/opencode-v1.md)                           |
+| OpenCode V2 (2.0.4+) | [V2 notes](docs/opencode-v2.md)                           |
+| Codex                | [Codex notes](docs/codex.md)                              |
+| Claude Code          | [Claude Code notes](docs/claude-code.md)                  |
+| Any other host       | Probe for a subagent/agent tool; report `blocked` if none |
 
-Where a host needs named role subagents (OpenCode, Claude Code, Codex), create them once so their model tiers are pinned; without them, a dispatch still works but the subagent inherits the primary model. The routing table below stays capability-based; the concrete `subagent_type` per host is the table above.
+Where a host needs named role subagents, create them once so their model tiers are pinned; without them, a dispatch still works but the subagent inherits the primary model. The routing table below stays capability-based; the concrete dispatch target per host, plus model control, permissions, and resume behavior, are in the host notes above. If a host exposes no dispatch mechanism, report `blocked` naming the missing capability rather than executing the role's work inline.
 
 ## Workspace and Ledger
 
@@ -40,6 +41,7 @@ At orchestration start, resolve the workspace under the repository root:
 The ledger is the recovery map: conversation memory does not survive compaction, and controllers that lost their place have re-dispatched entire completed task sequences. After compaction, trust the ledger and `git log` over your own recollection. Record in it, one line each:
 
 - `Task <N>: complete (commits <base7>..<head7>, review pass)` for code tasks, `Task <N>: complete (evidence: <one-liner>)` for non-code tasks — or `<K> parked` after a tripped breaker
+- `Task <N>: session <id> (<role>)` — written at dispatch when the host returns a resume handle; omit it on hosts that do not
 - `Task <N>: fix round <R>/<cap> (<X> addressed, <Y> open — <finding one-liners>)`
 - `Task <N>: diagnosed — <root-cause one-liner> (task_XXX-debug[-r<R>].md)` — the diagnosis exists; resume at the fix dispatch, not a fresh diagnosis
 - `Task <N>: deferred: <finding one-liner>`
@@ -87,7 +89,7 @@ Keep inline: choosing the next step, resolving worker contradictions, judging ev
 
 ## Routing
 
-Capability-based, not personality-based. Route from this table; do not read the template's prompt skeleton yourself — read the fill instructions, fill, dispatch. This table names capabilities; the concrete `subagent_type` for each role on the current host is in Host Dispatch.
+Capability-based, not personality-based. Route from this table; do not read the template's prompt skeleton yourself — read the fill instructions, fill, dispatch. This table names capabilities; the concrete dispatch target for each role on the current host is in Host Dispatch.
 
 | Role        | Capability                                                                | Permission                            | Route when                                           | Template                 |
 | ----------- | ------------------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- | ------------------------ |
