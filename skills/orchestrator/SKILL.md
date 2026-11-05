@@ -30,9 +30,26 @@ Before any dispatch, resolve the adapter: locate `orchestrator-adapter-<host>`, 
 
 ### Add-ons
 
-The default add-on is `none`. Load `orchestrator-addon-<name>` only when the user explicitly requests it or the plan header records that request; if it is not installed, ask whether to install it, continue without it, or stop. Read its `## Orchestrator Integration`, require contract version `1`, and apply only the sections it defines. A missing section means no change for that phase. An incompatible contract is `blocked: incompatible <skill> add-on contract`. Record the choice in the plan header when saved and in the ledger.
+The default add-on is `none`. Installing an add-on makes it available; it does not activate it. Activation requires explicit user consent: a direct request or acceptance of a need-based offer.
 
-Stop and ask whether to save, adjust, or execute. Execute only after an explicit yes or execute request. The header records `**Add-on:** none` or the active add-on; an execution session does not re-ask. Missing field = `none`; an uninstalled add-on -> ask whether to continue, install, or stop.
+Selection uses three facts: installed, requested, and needed. `Needed` means the add-on's `### Activation` criteria say it benefits this plan and the base workflow does not already provide that benefit. Assess it for the current plan, not the repository. At planning start, scan available `orchestrator-addon-*` skills and assess each against the plan; a requested add-on is always a candidate. If the host exposes no add-on catalog, assess only requested or plan-named add-ons. Reading an add-on's description or `### Activation` criteria to assess need is selection, not activation; apply its `## Orchestrator Integration` only after consent.
+
+| Installed | Requested | Needed | Action                                                                                      |
+| --------- | --------- | ------ | ------------------------------------------------------------------------------------------- |
+| yes       | yes       | yes    | Activate the add-on.                                                                        |
+| yes       | yes       | no     | Ask once: skip it (recommended) or use it anyway. Honor the answer.                         |
+| yes       | no        | yes    | Offer it: ask whether to use it. Honor the answer.                                          |
+| yes       | no        | no     | Ignore it; continue with the base workflow.                                                 |
+| no        | yes       | yes    | Ask whether to install it, continue without it, or stop.                                    |
+| no        | no        | yes    | Ask whether to use it; if yes, ask whether to install it, continue without it, or stop.     |
+| no        | yes       | no     | Ask once: skip it (recommended) or use it anyway; only “use” leads to the install question. |
+| no        | no        | no     | Ignore it; continue with the base workflow.                                                 |
+
+A candidate add-on that cannot apply at all is `not applicable`: explain why and continue with the base workflow. Do not offer an override that cannot work; the add-on's `### Activation` says whether an exception is possible. An uninstalled add-on can be needed only when identified by the user, the live plan, or a skill catalog; do not guess uninstalled capabilities. An add-on without a `Needed` test is never offered proactively and, when requested, follows its existing activation rules as if needed. If several add-ons are needed, ask the user which one to activate; the current contract records one active add-on in the plan header.
+
+When the user chooses use, load `orchestrator-addon-<name>`, read its `## Orchestrator Integration`, require contract version `1`, and apply only the sections it defines. A missing section means no change for that phase. An incompatible contract is `blocked: incompatible <skill> add-on contract`. If the user declines a needed add-on or chooses skip, follow the user and record a ruling; do not re-ask in the session. Record the choice in the plan header when saved and in the ledger.
+
+Stop and ask whether to save, adjust, or execute. Execute only after an explicit yes or execute request. The header records `**Add-on:** none` or the active add-on, with `**Add-on rationale:**` for a non-default selection (declined, skipped, overridden, or not applicable); an execution session does not re-ask. Missing field = `none`; an uninstalled add-on named in the header -> ask whether to install it, continue without it, or stop.
 
 ## Execution Setup
 
@@ -106,7 +123,8 @@ Setup gates are asked once before work starts:
 
 - plan handoff — stop, ask whether to save, adjust, or execute;
 - missing adapter — continue with generic probing, install it, or stop;
-- requested add-on not installed — install it, continue without it, or stop;
+- add-on selection — when an add-on is requested or needed, ask the selection question once; never activate without consent;
+- chosen add-on not installed — install it, continue without it, or stop;
 - missing plan for a multi-task execution — ask the user to save one first;
 - scope or architecture change to an approved plan — write a revision and ask.
 
@@ -126,6 +144,7 @@ At an exhausted budget with open findings: rule on each — reviewer wrong, park
 | I'll paste the report into the next dispatch | Pasted text stays in your context forever. Pass the workspace path; the worker reads the file.                                                     |
 | The ledger is bookkeeping                    | The ledger is what survives compaction. Controllers without one have re-dispatched completed task sequences.                                       |
 | The plan is saved; I'll start without asking | The handoff gate is mandatory. Stop and ask whether to save, adjust, or execute.                                                                   |
+| The add-on is installed, so use it           | Installation is availability, not activation. Apply the selection table and get consent.                                                           |
 | I'll edit the host config to enforce this    | Recommend the setting; never edit user configuration. Report a gap instead.                                                                        |
 | The debugger can just modify the checkout    | Diagnose in a disposable worktree or copy. The source checkout stays read-only.                                                                    |
 

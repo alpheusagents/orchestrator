@@ -40,6 +40,8 @@ Start every plan with this header:
 
 **Add-on:** <none or the active add-on>
 
+**Add-on rationale:** <why this add-on is active or why none; omit unless the selection was declined, skipped, overridden, or not applicable>
+
 **Execution:** Orchestrator dispatch loop; this plan is the source of briefs
 
 ## Global Constraints
@@ -137,7 +139,7 @@ Do not write "handle edge cases," "add validation," "wire it up," or "TBD." Thos
 
 ## Add-on Profiles
 
-The plan header names the add-on. The default profile names tests and verification without enforcing a test-first ritual; the active add-on's `### Planning` section replaces the step sequence. Do not hardcode one add-on into this guide.
+The plan header names the add-on and records the selection rationale when the selection was declined, skipped, overridden, or not applicable. The default profile names tests and verification without enforcing a test-first ritual; the active add-on's `### Planning` section replaces the step sequence. Do not hardcode one add-on into this guide.
 
 ## Self-Review Gate
 
@@ -149,7 +151,7 @@ Run this before saving. It is the orchestrator's own checklist, not a subagent d
 4. **Briefs:** each task contains enough exact values for its brief to stand alone.
 5. **Review Focus:** every listed condition has a test in the task that owns it.
 6. **Dependencies:** task order and parallel flags match the interfaces.
-7. **Add-on:** the step profile matches the plan header, and every add-on-specific requirement appears in the task or brief.
+7. **Add-on:** the step profile matches the plan header, the selection rationale is recorded when the selection was declined, skipped, overridden, or not applicable, and every add-on-specific requirement appears in the task or brief.
 8. **Proportion:** the plan is not a code transcript, and no task is too large for one review.
 9. **Decisions:** no `TBD`, "appropriate," "as needed," or other undecided lines remain.
 10. **Host neutrality:** the plan describes outcomes and interfaces, not one host's tools or command syntax.

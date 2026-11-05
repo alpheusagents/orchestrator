@@ -17,6 +17,8 @@ skills add -g alpheusagents/orchestrator --skill orchestrator-adapter-opencode
 skills add -g alpheusagents/orchestrator --skill orchestrator-addon-test-driven-development
 ```
 
+Installing an add-on only makes it available. The orchestrator never activates one silently: it activates an add-on after an explicit request, or after a need-based offer that you accept.
+
 ## Usage
 
 Trigger the skill by natural phrasing:

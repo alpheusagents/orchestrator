@@ -28,7 +28,7 @@ Before the first dispatch:
 - Check that tasks are numbered and each has a deliverable and verification.
 - Check that the named inputs or spec path is reachable.
 - Check that the live plan is readable; if it is not writable, use the copy fallback in Plan Resolution.
-- Check that the named add-on is installed. If it is not, ask whether to continue without it, install it, or stop; record the ruling. If the plan has no add-on, treat it as `none`.
+- Resolve the add-on from the ledger's `Add-on:` line when resuming, otherwise from the plan header. Missing both = `none`; do not re-open selection at execution. If the resolved add-on is not installed, ask whether to install it, continue without it, or stop; record the ruling. If the user continues without it, write `Add-on: none` so a resume does not ask again. If the add-on's contract is incompatible, report `blocked`.
 - Re-read the live plan, then derive one brief per task. Do not re-plan.
 - If the plan has a small defect, rule and record it. If the defect changes scope or architecture, write a revision and ask.
 

@@ -1,6 +1,6 @@
 ---
 name: orchestrator-addon-test-driven-development
-description: Use only when the user explicitly asks for test-driven development. Never load for ordinary coding. Adds strict red-green-refactor enforcement to implementer, tester, debugger, reviewer, and verifier dispatches.
+description: Use only after explicit user consent. The user asks for test-driven development, or accepts an offer made because the current plan needs it. Never activate without consent. Adds strict red-green-refactor enforcement to implementer, tester, debugger, reviewer, and verifier dispatches.
 metadata:
     orchestrator-kind: addon
     orchestrator-contract: "1"
@@ -8,13 +8,19 @@ metadata:
 
 # Test-Driven Development Add-on
 
-An opt-in methodology for orchestrator sessions. It changes the plan steps, task briefs, and role dispatches. It is never selected automatically and is not a general coding style.
+An opt-in methodology for orchestrator sessions. It changes the plan steps, task briefs, and role dispatches. It is never activated without explicit user consent and is not a general coding style.
 
 ## When to Use
 
-Use it only when the user explicitly asks for test-driven development. A workflow is suitable when it changes runtime behavior, a test can observe that behavior through a public interface, and the project has a test runner or the task can add one within scope.
+Use it only after explicit user consent: either the user requests test-driven development, or the user accepts an offer the orchestrator makes because TDD is needed.
 
-Do not activate it for documentation, comments, configuration-only changes, generated code, throwaway prototypes, pure exploration, or work with no observable behavior and no reasonable test seam. If the user asks for TDD on an unsuitable workflow, explain why it does not fit and ask whether to proceed with an exception.
+A workflow is **applicable** when it changes runtime behavior, a test can observe that behavior through a public interface, and the project has a test runner or the task can add one within scope.
+
+TDD is **needed** when the expected behavior is not already pinned by existing tests or a complete specification, so test-first adds discovery or regression value. It is **not needed** when tests already exist (for example, copied from another repository) or the behavior is fully known and only implementation remains; recommend skipping it in those cases.
+
+Do not activate it for documentation, comments, configuration-only changes, generated code, throwaway prototypes, pure exploration, or work with no observable behavior and no reasonable test seam. That is **not applicable**; explain why it does not fit and continue with the base workflow. Do not offer an override that cannot produce a meaningful failing test.
+
+If the user asks for TDD on an applicable but not-needed workflow, ask once: skip it (recommended) or use it anyway. If the user asks on a not-applicable workflow, explain why it does not fit; do not offer a meaningless override.
 
 ## The Core Rule
 
@@ -105,11 +111,18 @@ Stop and rebuild from the test when you notice:
 
 ### Activation
 
-- The orchestrator activates this add-on only on an explicit user request.
-- The plan header records `**Add-on:** test-driven-development`.
-- The execution ledger records `Add-on: test-driven-development`.
-- The orchestrator does not offer this add-on proactively. It must not activate silently or on ordinary coding.
-- An unsuitable workflow needs an explicit user exception and a ledger ruling.
+- The orchestrator applies the add-on selection table in the core skill. TDD is activated only after explicit user consent: a direct request or acceptance of a need-based offer.
+- `Needed`: the expected behavior is not already pinned by existing tests or a complete specification, and test-first adds discovery or regression value.
+- `Not needed`: tests already exist or the behavior is fully known and only implementation remains. Recommend skipping.
+- `Not applicable`: documentation, comments, configuration-only changes, generated code, throwaway prototypes, pure exploration, or no observable behavior and no reasonable test seam. Explain why it does not fit; no override unless a meaningful failing test can still be written.
+- Requested and needed: activate.
+- Requested but not needed: ask once, “TDD is applicable here but not needed because <reason>. Skip it (recommended) or use it anyway?”
+- Needed but not requested: offer, “This work would benefit from TDD because <reason>. Use it?”
+- Neither requested nor needed: ignore.
+- If the user chooses to use TDD and the skill is not installed, ask whether to install it, continue without it, or stop. Installing stops the session until the skill is installed and the session restarts or resumes.
+- If the user declines a needed offer or chooses skip, follow the user; record a ruling and do not re-ask in the session.
+- The plan header records `**Add-on:** test-driven-development` or `**Add-on:** none`, with an `**Add-on rationale:**` line for a non-default selection: declined, skipped, overridden, or not applicable. The execution ledger records `Add-on: test-driven-development` or `Add-on: none` and the ruling.
+- The orchestrator must not activate silently or apply TDD without consent. A not-applicable workflow is not activated unless the user explicitly approves an exception and a meaningful failing test can still be written; record the ruling.
 
 ### Planning
 
@@ -123,13 +136,14 @@ Replace the default task step sequence with this profile:
 6. Refactor while keeping the suite green.
 7. Commit the test and production change together.
 
-Every behavior-changing task gets a test step before its production step. A task that cannot have a test needs an exception in the plan and the ledger.
+Every behavior-changing task gets a test step before its production step. A task that cannot have a test needs an exception in the plan and the ledger. A copied or pre-existing test can serve as the red evidence only if it fails for the intended reason before the production change; a test that already passes is not red evidence.
 
 ### Task Briefs
 
 Add to each behavior-changing task's brief:
 
 - the exact test file, test name, and assertions;
+- for a copied or pre-existing test, the exact test and the failure it must produce before the production change; a test that already passes cannot serve as red evidence;
 - the focused command and the failure it must produce;
 - the focused command and the pass it must produce;
 - the project suite command;
@@ -166,14 +180,18 @@ The implementer report includes, per behavior:
 TDD: <test name> — red: <command> -> <observed failure>; green: <command> -> <observed pass>
 ```
 
-It also includes the project suite command and result. "Tests pass" is a summary, not evidence. The tester and reviewer check the evidence against the reported changes. A behavior that cannot be tested is recorded as an exception with the user's approval.
+It also includes the project suite command and result. "Tests pass" is a summary, not evidence. A test that already passes is not red evidence; if no failing test can be produced, record an exception instead of claiming TDD. The tester and reviewer check the evidence against the reported changes. A behavior that cannot be tested is recorded as an exception with the user's approval.
 
 ### Ledger
 
-- Plan header: `**Add-on:** test-driven-development`.
-- Execution ledger: `Add-on: test-driven-development`.
+- Plan header: `**Add-on:** test-driven-development` or `**Add-on:** none`, plus `**Add-on rationale:**` for a non-default selection: declined, skipped, overridden, or not applicable.
+- Execution ledger: `Add-on: test-driven-development` or `Add-on: none`.
 - Task completion: include `tdd evidence` when every behavior has red and green evidence.
 - Exception: `Ruling: TDD exception — <behavior> — <why no test> — user approved`.
+- Skip: `Ruling: TDD skipped — not needed, user chose skip`.
+- Override: `Ruling: TDD override — not needed, user chose use`.
+- Decline: `Ruling: TDD declined — needed, user chose default`.
+- Not applicable: `Ruling: TDD not applicable — <why>`.
 - Fix round or adjustment: record the regression test that failed before the repair.
 
 ## Standalone Use
