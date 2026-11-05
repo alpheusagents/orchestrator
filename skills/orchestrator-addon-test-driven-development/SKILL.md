@@ -2,9 +2,8 @@
 name: orchestrator-addon-test-driven-development
 description: Use only when the user explicitly asks for test-driven development. Never load for ordinary coding. Adds strict red-green-refactor enforcement to implementer, tester, debugger, reviewer, and verifier dispatches.
 metadata:
-    orchestrator-kind: methodology-addon
+    orchestrator-kind: addon
     orchestrator-contract: "1"
-    orchestrator-methodology: test-driven-development
 ---
 
 # Test-Driven Development Add-on
@@ -102,13 +101,13 @@ Stop and rebuild from the test when you notice:
 ## Orchestrator Integration
 
 **Contract version:** 1
-**Methodology:** test-driven-development
+**Add-on:** test-driven-development
 
 ### Activation
 
 - The orchestrator activates this add-on only on an explicit user request.
-- The plan header records `**Methodology:** test-driven-development`.
-- The execution ledger records `Methodology: test-driven-development`.
+- The plan header records `**Add-on:** test-driven-development`.
+- The execution ledger records `Add-on: test-driven-development`.
 - The orchestrator does not offer this add-on proactively. It must not activate silently or on ordinary coding.
 - An unsuitable workflow needs an explicit user exception and a ledger ruling.
 
@@ -171,8 +170,8 @@ It also includes the project suite command and result. "Tests pass" is a summary
 
 ### Ledger
 
-- Plan header: `**Methodology:** test-driven-development`.
-- Execution ledger: `Methodology: test-driven-development`.
+- Plan header: `**Add-on:** test-driven-development`.
+- Execution ledger: `Add-on: test-driven-development`.
 - Task completion: include `tdd evidence` when every behavior has red and green evidence.
 - Exception: `Ruling: TDD exception — <behavior> — <why no test> — user approved`.
 - Fix round or adjustment: record the regression test that failed before the repair.

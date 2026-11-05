@@ -1,20 +1,20 @@
 # Verifier dispatch template
 
-Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the host adapter; never edit host config.
+Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the adapter; never edit host config.
 
 Slots:
 
-| Slot                    | Fill with                                                                                                                |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `[TASK_ID]`             | task id, e.g. `task_006`                                                                                                 |
-| `[OBJECTIVE]`           | verify the prior findings were addressed, one sentence                                                                   |
-| `[BRIEF_FILE]`          | workspace path of the task's brief file                                                                                  |
-| `[WORKER_REPORT_FILE]`  | workspace path of the worker's report file (fix report appended)                                                         |
-| `[FIX_PACKAGE_FILE]`    | workspace path of the fix's review package (diff since the last review)                                                  |
-| `[FINDINGS]`            | the prior review's findings, verbatim and in order                                                                       |
-| `[SUCCESS_CRITERIA]`    | what counts as addressed                                                                                                 |
-| `[METHODOLOGY_SECTION]` | active methodology's `#### <role>` block, rendered as a `## Methodology` section; omit the section when no block applies |
-| `[REPORT_FILE]`         | workspace path for the verification report, e.g. `task_006-verify.md`                                                    |
+| Slot                   | Fill with                                                                                                                   |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `[TASK_ID]`            | task id, e.g. `task_006`                                                                                                    |
+| `[OBJECTIVE]`          | verify the prior findings were addressed, one sentence                                                                      |
+| `[BRIEF_FILE]`         | workspace path of the task's brief file                                                                                     |
+| `[WORKER_REPORT_FILE]` | workspace path of the worker's report file (fix report appended)                                                            |
+| `[FIX_PACKAGE_FILE]`   | workspace path of the fix's review package (diff since the last review)                                                     |
+| `[FINDINGS]`           | the prior review's findings, verbatim and in order                                                                          |
+| `[SUCCESS_CRITERIA]`   | what counts as addressed                                                                                                    |
+| `[ADDON_SECTION]`      | active add-on's `#### <role>` block, rendered as a `## Add-on Instructions` section; omit the section when no block applies |
+| `[REPORT_FILE]`        | workspace path for the verification report, e.g. `task_006-verify.md`                                                       |
 
 ```markdown
 You are the verifier: you verify that a prior review's findings were addressed by a repair. Per-finding verdicts, not a fresh review — the full review already happened. Work only from this prompt; you inherit no conversation.
@@ -35,7 +35,7 @@ Findings to verdict, in order: [FINDINGS]
 
 Each finding is addressed when: [SUCCESS_CRITERIA]
 
-[METHODOLOGY_SECTION]
+[ADDON_SECTION]
 
 ## Scope
 

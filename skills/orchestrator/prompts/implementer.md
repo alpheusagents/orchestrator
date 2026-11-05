@@ -1,18 +1,18 @@
 # Implementer dispatch template
 
-Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the host adapter; never edit host config.
+Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the adapter; never edit host config.
 
 Slots:
 
-| Slot                    | Fill with                                                                                                                                                         |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `[TASK_ID]`             | task id, e.g. `task_002`                                                                                                                                          |
-| `[BRIEF_FILE]`          | workspace path of this task's brief file; exact values appear only there                                                                                          |
-| `[OBJECTIVE]`           | one-sentence implementation objective                                                                                                                             |
-| `[CONTEXT]`             | where the task fits; interfaces and decisions from earlier tasks; ambiguity resolutions; parked findings in the touched area — references, never pasted artifacts |
-| `[WORKDIR]`             | directory the worker works from (usually the repository root)                                                                                                     |
-| `[METHODOLOGY_SECTION]` | active methodology's `#### <role>` block, rendered as a `## Methodology` section; omit the section when no block applies                                          |
-| `[REPORT_FILE]`         | workspace path for the full report, e.g. `task_002-report.md`                                                                                                     |
+| Slot              | Fill with                                                                                                                                                         |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `[TASK_ID]`       | task id, e.g. `task_002`                                                                                                                                          |
+| `[BRIEF_FILE]`    | workspace path of this task's brief file; exact values appear only there                                                                                          |
+| `[OBJECTIVE]`     | one-sentence implementation objective                                                                                                                             |
+| `[CONTEXT]`       | where the task fits; interfaces and decisions from earlier tasks; ambiguity resolutions; parked findings in the touched area — references, never pasted artifacts |
+| `[WORKDIR]`       | directory the worker works from (usually the repository root)                                                                                                     |
+| `[ADDON_SECTION]` | active add-on's `#### <role>` block, rendered as a `## Add-on Instructions` section; omit the section when no block applies                                       |
+| `[REPORT_FILE]`   | workspace path for the full report, e.g. `task_002-report.md`                                                                                                     |
 
 Never make the worker read the whole goal or the session history; the brief is the single source of requirements.
 
@@ -36,7 +36,7 @@ Objective: [OBJECTIVE]
 
 Work from: [WORKDIR]
 
-[METHODOLOGY_SECTION]
+[ADDON_SECTION]
 
 ## Before You Begin
 

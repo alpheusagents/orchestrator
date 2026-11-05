@@ -1,21 +1,21 @@
 # Debugger dispatch template
 
-Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the host adapter; never edit host config.
+Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the adapter; never edit host config.
 
 Slots:
 
-| Slot                    | Fill with                                                                                                                      |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `[TASK_ID]`             | task id, e.g. `task_005`                                                                                                       |
-| `[OBJECTIVE]`           | one-sentence diagnosis goal: the failure to root-cause                                                                         |
-| `[BRIEF_FILE]`          | workspace path of the task's brief file, if one exists; the intended behavior the failure departs from                         |
-| `[SCOPE]`               | the symptom as observed: affected commands, tests, or paths; reproduction entry points; relevant commits or recent changes     |
-| `[SUCCESS_CRITERIA]`    | what the diagnosis must settle                                                                                                 |
-| `[CONTEXT]`             | prior findings, worker reports, failed fix attempts — report-file references, never pasted artifacts                           |
-| `[SOURCE]`              | path to the real checkout; never modify it                                                                                     |
-| `[WORKDIR]`             | disposable worktree/copy when one exists; otherwise the source checkout (read-only)                                            |
-| `[METHODOLOGY_SECTION]` | active methodology's `#### <role>` block, rendered as a `## Methodology` section; omit the section when no block applies       |
-| `[REPORT_FILE]`         | workspace path for the full report, e.g. `task_005-debug.md`; a re-diagnosis gets `task_005-debug-r<R>.md`, never an overwrite |
+| Slot                 | Fill with                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `[TASK_ID]`          | task id, e.g. `task_005`                                                                                                       |
+| `[OBJECTIVE]`        | one-sentence diagnosis goal: the failure to root-cause                                                                         |
+| `[BRIEF_FILE]`       | workspace path of the task's brief file, if one exists; the intended behavior the failure departs from                         |
+| `[SCOPE]`            | the symptom as observed: affected commands, tests, or paths; reproduction entry points; relevant commits or recent changes     |
+| `[SUCCESS_CRITERIA]` | what the diagnosis must settle                                                                                                 |
+| `[CONTEXT]`          | prior findings, worker reports, failed fix attempts — report-file references, never pasted artifacts                           |
+| `[SOURCE]`           | path to the real checkout; never modify it                                                                                     |
+| `[WORKDIR]`          | disposable worktree/copy when one exists; otherwise the source checkout (read-only)                                            |
+| `[ADDON_SECTION]`    | active add-on's `#### <role>` block, rendered as a `## Add-on Instructions` section; omit the section when no block applies    |
+| `[REPORT_FILE]`      | workspace path for the full report, e.g. `task_005-debug.md`; a re-diagnosis gets `task_005-debug-r<R>.md`, never an overwrite |
 
 ```markdown
 You are the debugger: you reproduce a failure, isolate its root cause, and propose the smallest repair — diagnosis, never the repair itself. Read-only against the source checkout. Work only from this prompt; you inherit no conversation.
@@ -40,7 +40,7 @@ Source checkout (read-only): [SOURCE]
 
 Work from: [WORKDIR]
 
-[METHODOLOGY_SECTION]
+[ADDON_SECTION]
 
 ## Before You Begin
 

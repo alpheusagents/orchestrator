@@ -26,13 +26,13 @@ Planning is first-class. Every planning session produces a plan and, when the ho
 
 Every planning session gets a plan; read `references/writing-plans.md`. When the host is writable, create the session workspace before dispatching exploration work; it holds exploration reports and later artifacts. Planning and self-review are main-agent work. If the plan needs repository understanding you lack, dispatch explorer or researcher first; never inspect inline.
 
-Before any dispatch, resolve the host adapter: locate `orchestrator-adapter-<host>`, load it, require contract version `1`, and record it in the plan header or workspace note; record it again in the execution ledger. If none is installed, ask whether to continue with generic probing, install it, or stop. Details: `references/execution.md`.
+Before any dispatch, resolve the adapter: locate `orchestrator-adapter-<host>`, load it, require contract version `1`, and record it in the plan header or workspace note; record it again in the execution ledger. If none is installed, ask whether to continue with generic probing, install it, or stop. Details: `references/execution.md`.
 
-### Methodology
+### Add-ons
 
-The default is `none`. Load `orchestrator-addon-<name>` only when the user explicitly requests it or the plan header records that request; if it is not installed, ask whether to install it, continue without it, or stop. Read its `## Orchestrator Integration`, require contract version `1`, and apply only the sections it defines. A missing section means no change for that phase. An incompatible contract is `blocked: incompatible <skill> methodology contract`. Record the choice in the plan header when saved and in the ledger.
+The default add-on is `none`. Load `orchestrator-addon-<name>` only when the user explicitly requests it or the plan header records that request; if it is not installed, ask whether to install it, continue without it, or stop. Read its `## Orchestrator Integration`, require contract version `1`, and apply only the sections it defines. A missing section means no change for that phase. An incompatible contract is `blocked: incompatible <skill> add-on contract`. Record the choice in the plan header when saved and in the ledger.
 
-Stop and ask whether to save, adjust, or execute. Execute only after an explicit yes or execute request. The header records `**Methodology:** none` or the active methodology; an execution session does not re-ask. Missing field = `none`; an uninstalled add-on -> ask whether to continue, install, or stop.
+Stop and ask whether to save, adjust, or execute. Execute only after an explicit yes or execute request. The header records `**Add-on:** none` or the active add-on; an execution session does not re-ask. Missing field = `none`; an uninstalled add-on -> ask whether to continue, install, or stop.
 
 ## Execution Setup
 
@@ -57,17 +57,17 @@ Capability-based, not personality-based. Route from this table; fill the role te
 ## Dispatch Discipline
 
 - One dispatch = one filled template. Pass report-file paths, never pasted reports or history. The main agent normally sees only the return contract — task id, status, one-line summary, concerns, workspace paths. Read the report file when it needs detail.
-- The plan is the requirements source; the brief is the worker's single source. Copy the plan's task section verbatim, then append Global Constraints, the task's Review Focus lines, the methodology's `### Task Briefs` rules, and execution context. Never paraphrase exact values.
+- The plan is the requirements source; the brief is the worker's single source. Copy the plan's task section verbatim, then append Global Constraints, the task's Review Focus lines, the add-on's `### Task Briefs` rules, and execution context. Never paraphrase exact values.
 - Batch small same-shape work: several independent edits of the same kind are one dispatch with one review surface, not one dispatch each.
 - Never paste a worker's report, a diff, or a file dump into a dispatch; write it to the workspace and pass the path. Exception: finding one-liners for a fix or verification dispatch go in verbatim — they scope the work being judged.
 - Read-only roles may write only their report file under the session workspace and, for the debugger, a disposable worktree or copy; never modify the checkout. If the target cannot write, the worker returns the full report inline and the orchestrator writes it; record `Permission gap: report write`.
 - Model discipline: use the least capable model that works. The adapter recommends where the model is pinned or passed; an unconfigured subagent may inherit the primary model. Turn count beats token price, so mid-tier is the floor for prose-driven roles; reserve the cheapest tier for transcription and single-file mechanical edits. Never put a `[MODEL]` slot in a prompt, and never edit host config.
 - Record `BASE` (`git rev-parse HEAD`) before dispatching an implementer; the review package needs it — never `HEAD~1`, which drops all but the last commit of a multi-commit task.
-- Methodology: if the active add-on has a `#### <role>` block under `### Dispatch`, include `## Methodology` and paste that block verbatim into the role's prompt. If it has no block for that role, omit the section.
+- Add-on: if the active add-on has a `#### <role>` block under `### Dispatch`, include `## Add-on Instructions` and paste that block verbatim into the role's prompt. If it has no block for that role, omit the section.
 
 ## Dispatch Format
 
-Read `<skill_dir>/prompts/<role>.md` (`<skill_dir>` is this skill's install directory; the orchestrator resolves it, never the worker), fill every slot, and send the entire filled prompt. `[METHODOLOGY_SECTION]` is the active role block rendered as `## Methodology`, or nothing; remove the placeholder. Never improvise around the template — format drift starts there. If a template is missing, mark the task `blocked`; never import third-party templates.
+Read `<skill_dir>/prompts/<role>.md` (`<skill_dir>` is this skill's install directory; the orchestrator resolves it, never the worker), fill every slot, and send the entire filled prompt. `[ADDON_SECTION]` is the active role block rendered as `## Add-on Instructions`, or nothing; remove the placeholder. Never improvise around the template — format drift starts there. If a template is missing, mark the task `blocked`; never import third-party templates.
 
 ## Parallelism
 
@@ -105,8 +105,8 @@ Decide conflicts, ambiguities, and plan defects yourself instead of parking the 
 Setup gates are asked once before work starts:
 
 - plan handoff — stop, ask whether to save, adjust, or execute;
-- missing host adapter — continue with generic probing, install it, or stop;
-- requested methodology not installed — install it, continue without it, or stop;
+- missing adapter — continue with generic probing, install it, or stop;
+- requested add-on not installed — install it, continue without it, or stop;
 - missing plan for a multi-task execution — ask the user to save one first;
 - scope or architecture change to an approved plan — write a revision and ask.
 

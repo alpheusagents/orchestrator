@@ -38,7 +38,7 @@ Start every plan with this header:
 
 **Inputs:** <spec or design paths, or "none">
 
-**Methodology:** <none or the active add-on>
+**Add-on:** <none or the active add-on>
 
 **Execution:** Orchestrator dispatch loop; this plan is the source of briefs
 
@@ -77,7 +77,7 @@ Do not create catch-all tasks such as "refactor everything" or "add tests later.
 
 ## Task Template
 
-Use this shape, adapting the step order to the active methodology:
+Use this shape, adapting the step order to the active add-on:
 
 ```markdown
 ### Task N: <Name>
@@ -122,7 +122,7 @@ The default profile usually runs:
 4. Run the project suite.
 5. Commit.
 
-Code tasks require tests; non-code tasks require the verification named in the task. A strict test-first ritual is not required unless the active methodology requires it.
+Code tasks require tests; non-code tasks require the verification named in the task. A strict test-first ritual is not required unless the active add-on requires it.
 
 ## Step Quality
 
@@ -135,9 +135,9 @@ Each step must let the implementer do exactly one reasonable thing.
 
 Do not write "handle edge cases," "add validation," "wire it up," or "TBD." Those are decisions, and the plan exists to record them. Do not paste large implementation bodies; if most of the plan is code, the plan has become a transcript.
 
-## Methodology Profiles
+## Add-on Profiles
 
-The plan header names the methodology. The default profile names tests and verification without enforcing a test-first ritual; the active add-on's `### Planning` section replaces the step sequence. Do not hardcode one methodology into this guide.
+The plan header names the add-on. The default profile names tests and verification without enforcing a test-first ritual; the active add-on's `### Planning` section replaces the step sequence. Do not hardcode one add-on into this guide.
 
 ## Self-Review Gate
 
@@ -149,7 +149,7 @@ Run this before saving. It is the orchestrator's own checklist, not a subagent d
 4. **Briefs:** each task contains enough exact values for its brief to stand alone.
 5. **Review Focus:** every listed condition has a test in the task that owns it.
 6. **Dependencies:** task order and parallel flags match the interfaces.
-7. **Methodology:** the step profile matches the plan header, and every methodology-specific requirement appears in the task or brief.
+7. **Add-on:** the step profile matches the plan header, and every add-on-specific requirement appears in the task or brief.
 8. **Proportion:** the plan is not a code transcript, and no task is too large for one review.
 9. **Decisions:** no `TBD`, "appropriate," "as needed," or other undecided lines remain.
 10. **Host neutrality:** the plan describes outcomes and interfaces, not one host's tools or command syntax.

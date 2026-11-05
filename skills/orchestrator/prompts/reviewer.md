@@ -1,20 +1,20 @@
 # Reviewer dispatch template
 
-Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the host adapter; never edit host config.
+Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the adapter; never edit host config.
 
 Slots:
 
-| Slot                    | Fill with                                                                                                                                                                                                                                                                        |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `[TASK_ID]`             | task id, e.g. `task_004`                                                                                                                                                                                                                                                         |
-| `[OBJECTIVE]`           | what to judge, one sentence                                                                                                                                                                                                                                                      |
-| `[BRIEF_FILE]`          | workspace path of the reviewed task's brief file                                                                                                                                                                                                                                 |
-| `[WORKER_REPORT_FILE]`  | workspace path of the worker's report file                                                                                                                                                                                                                                       |
-| `[PACKAGE_FILE]`        | workspace path of the review package (commit list + stat + diff)                                                                                                                                                                                                                 |
-| `[CONSTRAINTS]`         | binding requirements copied verbatim: the plan's Global Constraints, the Review Focus lines this task owns, and the active methodology's review requirements — exact values, exact formats, stated relationships. This block is the reviewer's attention lens, not process rules |
-| `[SUCCESS_CRITERIA]`    | acceptance criteria the work is judged against                                                                                                                                                                                                                                   |
-| `[METHODOLOGY_SECTION]` | active methodology's `#### <role>` block, rendered as a `## Methodology` section; omit the section when no block applies                                                                                                                                                         |
-| `[REPORT_FILE]`         | workspace path for the review report, e.g. `task_004-review.md`                                                                                                                                                                                                                  |
+| Slot                   | Fill with                                                                                                                                                                                                                                                                   |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `[TASK_ID]`            | task id, e.g. `task_004`                                                                                                                                                                                                                                                    |
+| `[OBJECTIVE]`          | what to judge, one sentence                                                                                                                                                                                                                                                 |
+| `[BRIEF_FILE]`         | workspace path of the reviewed task's brief file                                                                                                                                                                                                                            |
+| `[WORKER_REPORT_FILE]` | workspace path of the worker's report file                                                                                                                                                                                                                                  |
+| `[PACKAGE_FILE]`       | workspace path of the review package (commit list + stat + diff)                                                                                                                                                                                                            |
+| `[CONSTRAINTS]`        | binding requirements copied verbatim: the plan's Global Constraints, the Review Focus lines this task owns, and the active add-on's review requirements — exact values, exact formats, stated relationships. This block is the reviewer's attention lens, not process rules |
+| `[SUCCESS_CRITERIA]`   | acceptance criteria the work is judged against                                                                                                                                                                                                                              |
+| `[ADDON_SECTION]`      | active add-on's `#### <role>` block, rendered as a `## Add-on Instructions` section; omit the section when no block applies                                                                                                                                                 |
+| `[REPORT_FILE]`        | workspace path for the review report, e.g. `task_004-review.md`                                                                                                                                                                                                             |
 
 Do not add open-ended directives ("check all uses", "run race tests if useful") without a concrete, task-specific reason. Do not pre-judge findings: never instruct the reviewer to ignore or downgrade an issue — let findings surface and adjudicate them yourself.
 
@@ -37,7 +37,7 @@ Binding requirements: [CONSTRAINTS]
 
 Acceptance criteria: [SUCCESS_CRITERIA]
 
-[METHODOLOGY_SECTION]
+[ADDON_SECTION]
 
 ## Do not trust the report
 

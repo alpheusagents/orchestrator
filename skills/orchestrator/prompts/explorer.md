@@ -1,18 +1,18 @@
 # Explorer dispatch template
 
-Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the host adapter; never edit host config.
+Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the adapter; never edit host config.
 
 Slots:
 
-| Slot                    | Fill with                                                                                                                |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `[TASK_ID]`             | task id, e.g. `task_001`                                                                                                 |
-| `[OBJECTIVE]`           | one-sentence investigation goal                                                                                          |
-| `[SCOPE]`               | paths to investigate; anything outside them is out of reach, not unexplored                                              |
-| `[SUCCESS_CRITERIA]`    | what the investigation must settle                                                                                       |
-| `[CONTEXT]`             | what the orchestrator already knows; report-file references the findings feed into — references, never pasted artifacts  |
-| `[METHODOLOGY_SECTION]` | active methodology's `#### <role>` block, rendered as a `## Methodology` section; omit the section when no block applies |
-| `[REPORT_FILE]`         | workspace path for the full report, e.g. `task_001-report.md`                                                            |
+| Slot                 | Fill with                                                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `[TASK_ID]`          | task id, e.g. `task_001`                                                                                                    |
+| `[OBJECTIVE]`        | one-sentence investigation goal                                                                                             |
+| `[SCOPE]`            | paths to investigate; anything outside them is out of reach, not unexplored                                                 |
+| `[SUCCESS_CRITERIA]` | what the investigation must settle                                                                                          |
+| `[CONTEXT]`          | what the orchestrator already knows; report-file references the findings feed into — references, never pasted artifacts     |
+| `[ADDON_SECTION]`    | active add-on's `#### <role>` block, rendered as a `## Add-on Instructions` section; omit the section when no block applies |
+| `[REPORT_FILE]`      | workspace path for the full report, e.g. `task_001-report.md`                                                               |
 
 For a large or multi-part investigation, put the exact questions and deliverable structure in a brief file and name it in `[CONTEXT]`; short investigations carry them in the slots directly.
 
@@ -33,7 +33,7 @@ The investigation must settle: [SUCCESS_CRITERIA]
 
 [CONTEXT]
 
-[METHODOLOGY_SECTION]
+[ADDON_SECTION]
 
 ## Before You Begin
 

@@ -1,20 +1,20 @@
 # Tester dispatch template
 
-Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the host adapter; never edit host config.
+Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the adapter; never edit host config.
 
 Slots:
 
-| Slot                    | Fill with                                                                                                                |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `[TASK_ID]`             | task id, e.g. `task_003`                                                                                                 |
-| `[OBJECTIVE]`           | what must be validated, one sentence                                                                                     |
-| `[SCOPE]`               | tests, suites, and commands in play                                                                                      |
-| `[SUCCESS_CRITERIA]`    | acceptance criteria to judge                                                                                             |
-| `[CONSTRAINTS]`         | how to run the validations: commands, environment, prerequisites                                                         |
-| `[CONTEXT]`             | what earlier tasks changed and why it matters here; report-file references — references, never pasted artifacts          |
-| `[WORKDIR]`             | directory the worker works from (usually the repository root)                                                            |
-| `[METHODOLOGY_SECTION]` | active methodology's `#### <role>` block, rendered as a `## Methodology` section; omit the section when no block applies |
-| `[REPORT_FILE]`         | workspace path for the full report, e.g. `task_003-report.md`                                                            |
+| Slot                 | Fill with                                                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `[TASK_ID]`          | task id, e.g. `task_003`                                                                                                    |
+| `[OBJECTIVE]`        | what must be validated, one sentence                                                                                        |
+| `[SCOPE]`            | tests, suites, and commands in play                                                                                         |
+| `[SUCCESS_CRITERIA]` | acceptance criteria to judge                                                                                                |
+| `[CONSTRAINTS]`      | how to run the validations: commands, environment, prerequisites                                                            |
+| `[CONTEXT]`          | what earlier tasks changed and why it matters here; report-file references — references, never pasted artifacts             |
+| `[WORKDIR]`          | directory the worker works from (usually the repository root)                                                               |
+| `[ADDON_SECTION]`    | active add-on's `#### <role>` block, rendered as a `## Add-on Instructions` section; omit the section when no block applies |
+| `[REPORT_FILE]`      | workspace path for the full report, e.g. `task_003-report.md`                                                               |
 
 ```markdown
 You are the tester: you validate behavior against acceptance criteria using tests and commands — validation, not modification. Work only from this prompt; you inherit no conversation.
@@ -37,7 +37,7 @@ How to run: [CONSTRAINTS]
 
 Work from: [WORKDIR]
 
-[METHODOLOGY_SECTION]
+[ADDON_SECTION]
 
 ## Before You Begin
 

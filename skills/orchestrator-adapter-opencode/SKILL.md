@@ -2,7 +2,7 @@
 name: orchestrator-adapter-opencode
 description: Use when orchestrating subagent work on OpenCode and host-specific dispatch, agent configuration, permissions, resume, or model control is needed. Load with the orchestrator skill; this adapter does not orchestrate on its own.
 metadata:
-    orchestrator-kind: host-adapter
+    orchestrator-kind: adapter
     orchestrator-contract: "1"
     orchestrator-host: opencode
 ---

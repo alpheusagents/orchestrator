@@ -1,19 +1,19 @@
 # Researcher dispatch template
 
-Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the host adapter; never edit host config.
+Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the adapter; never edit host config.
 
 Slots:
 
-| Slot                    | Fill with                                                                                                                |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `[TASK_ID]`             | task id, e.g. `task_000`                                                                                                 |
-| `[OBJECTIVE]`           | the research question, one sentence                                                                                      |
-| `[SCOPE]`               | topics in and out of bounds                                                                                              |
-| `[CONSTRAINTS]`         | source constraints: authoritative sources only, version ranges, format limits                                            |
-| `[SUCCESS_CRITERIA]`    | what the answer must settle                                                                                              |
-| `[CONTEXT]`             | project context the answer must fit; report-file references — references, never pasted artifacts                         |
-| `[METHODOLOGY_SECTION]` | active methodology's `#### <role>` block, rendered as a `## Methodology` section; omit the section when no block applies |
-| `[REPORT_FILE]`         | workspace path for the full report, e.g. `task_000-report.md`                                                            |
+| Slot                 | Fill with                                                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `[TASK_ID]`          | task id, e.g. `task_000`                                                                                                    |
+| `[OBJECTIVE]`        | the research question, one sentence                                                                                         |
+| `[SCOPE]`            | topics in and out of bounds                                                                                                 |
+| `[CONSTRAINTS]`      | source constraints: authoritative sources only, version ranges, format limits                                               |
+| `[SUCCESS_CRITERIA]` | what the answer must settle                                                                                                 |
+| `[CONTEXT]`          | project context the answer must fit; report-file references — references, never pasted artifacts                            |
+| `[ADDON_SECTION]`    | active add-on's `#### <role>` block, rendered as a `## Add-on Instructions` section; omit the section when no block applies |
+| `[REPORT_FILE]`      | workspace path for the full report, e.g. `task_000-report.md`                                                               |
 
 ```markdown
 You are the researcher: you answer external or documentation questions and return a compact, evidence-oriented report with sources — never a research transcript. Work only from this prompt; you inherit no conversation.
@@ -34,7 +34,7 @@ The answer must settle: [SUCCESS_CRITERIA]
 
 [CONTEXT]
 
-[METHODOLOGY_SECTION]
+[ADDON_SECTION]
 
 ## Before You Begin
 
