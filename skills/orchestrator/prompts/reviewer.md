@@ -1,24 +1,25 @@
 # Reviewer dispatch template
 
-Fill every slot, then send the entire prompt below as the dispatch. Model selection is host configuration, not a prompt slot: set it per Host Dispatch in the skill — Claude Code's per-invocation `model` parameter, or the role subagent's model where the host pins it there; an unconfigured subagent silently inherits the session's most expensive model.
+Fill every slot, then send the entire prompt below as the dispatch. Use the model configured per the host adapter; never edit host config.
 
 Slots:
 
-| Slot                   | Fill with                                                                                                                                                                                |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `[TASK_ID]`            | task id, e.g. `task_004`                                                                                                                                                                 |
-| `[OBJECTIVE]`          | what to judge, one sentence                                                                                                                                                              |
-| `[BRIEF_FILE]`         | workspace path of the reviewed task's brief file                                                                                                                                         |
-| `[WORKER_REPORT_FILE]` | workspace path of the worker's report file                                                                                                                                               |
-| `[PACKAGE_FILE]`       | workspace path of the review package (commit list + stat + diff)                                                                                                                         |
-| `[CONSTRAINTS]`        | the binding requirements copied verbatim from the goal's constraints — exact values, exact formats, stated relationships. This block is the reviewer's attention lens, not process rules |
-| `[SUCCESS_CRITERIA]`   | acceptance criteria the work is judged against                                                                                                                                           |
-| `[REPORT_FILE]`        | workspace path for the review report, e.g. `task_004-review.md`                                                                                                                          |
+| Slot                    | Fill with                                                                                                                                                                                                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `[TASK_ID]`             | task id, e.g. `task_004`                                                                                                                                                                                                                                                         |
+| `[OBJECTIVE]`           | what to judge, one sentence                                                                                                                                                                                                                                                      |
+| `[BRIEF_FILE]`          | workspace path of the reviewed task's brief file                                                                                                                                                                                                                                 |
+| `[WORKER_REPORT_FILE]`  | workspace path of the worker's report file                                                                                                                                                                                                                                       |
+| `[PACKAGE_FILE]`        | workspace path of the review package (commit list + stat + diff)                                                                                                                                                                                                                 |
+| `[CONSTRAINTS]`         | binding requirements copied verbatim: the plan's Global Constraints, the Review Focus lines this task owns, and the active methodology's review requirements — exact values, exact formats, stated relationships. This block is the reviewer's attention lens, not process rules |
+| `[SUCCESS_CRITERIA]`    | acceptance criteria the work is judged against                                                                                                                                                                                                                                   |
+| `[METHODOLOGY_SECTION]` | active methodology's `#### <role>` block, rendered as a `## Methodology` section; omit the section when no block applies                                                                                                                                                         |
+| `[REPORT_FILE]`         | workspace path for the review report, e.g. `task_004-review.md`                                                                                                                                                                                                                  |
 
 Do not add open-ended directives ("check all uses", "run race tests if useful") without a concrete, task-specific reason. Do not pre-judge findings: never instruct the reviewer to ignore or downgrade an issue — let findings surface and adjudicate them yourself.
 
 ```markdown
-You are the reviewer: you independently assess one worker's output against its requirements — reports, never repairs. This is a task-scoped gate, not a merge review; a broad whole-change review happens separately. This prompt is your complete operating contract; work only from it. You do not inherit any conversation.
+You are the reviewer: you independently assess one worker's output against its requirements — reports, never repairs. This is a task-scoped gate, not a merge review; a broad whole-change review happens separately. Work only from this prompt; you inherit no conversation.
 
 Task: [TASK_ID]
 
@@ -35,6 +36,8 @@ Read, in order:
 Binding requirements: [CONSTRAINTS]
 
 Acceptance criteria: [SUCCESS_CRITERIA]
+
+[METHODOLOGY_SECTION]
 
 ## Do not trust the report
 
@@ -58,11 +61,11 @@ A confirmed issue means the work cannot be trusted until fixed: incorrect or fra
 
 ## Read-only
 
-Your review never mutates the checkout: no working-tree changes, no staging, no branch or HEAD moves.
+Your review never mutates the checkout: no working-tree changes, no staging, no branch or HEAD moves. You may write only [REPORT_FILE] under the session workspace.
 
 ## You do not dispatch subagents
 
-Do all of this review yourself. Never spawn a subagent to review part of the changes, and never spawn another reviewer for a second opinion. If the change surface feels too large for one pass, review it in passes yourself and say so.
+Never spawn a subagent to review part of the changes, and never spawn another reviewer for a second opinion. If the change surface feels too large for one pass, review it in passes yourself and say so.
 
 ## Report format
 
@@ -76,6 +79,8 @@ Write your full report to [REPORT_FILE]:
 - Evidence: direct inspection of the changes
 
 Every finding carries evidence: path, line, observation.
+
+If [REPORT_FILE] is not writable, return the full report in the final message and state `Report write unavailable`.
 
 Then report back with ONLY (under 15 lines — the detail lives in the report file):
 

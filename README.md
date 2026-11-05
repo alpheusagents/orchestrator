@@ -1,13 +1,20 @@
 # Orchestrator
 
-A skill to orchestrate workflows with subagents.
+A set of skills to orchestrate workflows with subagents.
 
 ## Installation
 
 Install the skills with the [`skills`](https://github.com/vercel-labs/skills) CLI:
 
 ```sh
-skills add alpheusagents/orchestrator
+# Core
+skills add -g alpheusagents/orchestrator --skill orchestrator
+
+# Adapter: OpenCode
+skills add -g alpheusagents/orchestrator --skill orchestrator-adapter-opencode
+
+# Add-on: test-driven development
+skills add -g alpheusagents/orchestrator --skill orchestrator-addon-test-driven-development
 ```
 
 ## Usage
@@ -22,7 +29,7 @@ work on it with sub-agents driven
 orchestrate an implementation for this project
 ```
 
-Optionally, invoke it with `/orchestrate <task>`.
+Plans stay in the conversation until you ask to save one. The orchestrator creates a gitignored `.orchestrator/` workspace for reports and execution state; save the plan wherever you like. Scope or architecture changes to an approved plan need your approval.
 
 ## Architecture
 
