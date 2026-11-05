@@ -1,126 +1,90 @@
 ---
 name: orchestrator
-description: Use when the user is looking for orchestration or sub-agents driven development of a task, or when multi-step work - coding, refactors, migrations, investigations, research - is better delegated to subagents than executed by the main agent.
+description: Use when the user wants a subagent-ready implementation plan, orchestration, or sub-agent driven development of a multi-step task, including in Plan mode when the work will later be executed by subagents. Also use when the user says orchestrate this, plan this, or execute a saved plan.
+metadata:
+    orchestrator-kind: core
+    orchestrator-contract: "1"
 ---
 
 # Orchestrator
 
-Invariant: main agent = understand, decompose, dispatch, evaluate, replan, summarize. Sub-agents = actual execution. The main agent never explores, implements, tests, debugs, or researches itself; it dispatches instead. If the host exposes no subagent/agent-dispatch tool, or the required role has no valid target, report `blocked` naming the missing capability — never execute the work inline. Inline exploration, research, implementation, testing, debugging, or review is a contract violation, not a fallback.
+Main agent = understand, plan, decompose, dispatch, evaluate, replan, summarize. Sub-agents execute. Never explore, implement, test, debug, research, or review inline; dispatch instead. If no dispatch tool or role target exists, report `blocked` naming the missing capability — inline work is a contract violation, not a fallback. Delegate expensive or context-heavy work; keep planning, judging evidence, resolving contradictions, and synthesis inline. Expensive tokens coordinate; cheap tokens execute.
 
-## Invocation
+## Modes
 
-Trigger by natural phrasing ("orchestrate this task", "sub-agent driven development") or the `/orchestrate` slash command, with the task as arguments. If the host runtime supports command registration, `/orchestrate` may be registered as a command that loads this skill and passes the arguments as the task.
+| Mode        | Trigger                                                     | Behavior                                                                                 |
+| ----------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Plan        | "plan this", `orchestrate plan <task>`, read-only Plan mode | Produce and self-review in conversation; save only on request; stop, ask before execute. |
+| Execute     | "execute `<plan>`", `orchestrate execute <plan>`            | Load the live plan, validate, create or resume the ledger, dispatch.                     |
+| Save        | "write the plan into file"                                  | Write the plan verbatim to the user's chosen path, stop, ask before execute.             |
+| Orchestrate | `orchestrate <task>` in a writable session                  | Plan, stop, ask whether to save, adjust, or execute; never dispatch before the answer.   |
+| Resume      | "resume `<plan>`"                                           | Continue at the first task without a completion line.                                    |
 
-## Host Dispatch
+Planning is first-class. Every planning session produces a plan and, when the host is writable, creates the session workspace before dispatching exploration work. Do not write a plan file until the user asks; then use the user's chosen path. A read-only host returns the plan in conversation.
 
-The invariant holds across hosts; only the mechanism differs. Identify the host by its dispatch tool, then dispatch through it. A dispatch hands the role's filled template to a subagent as the entire prompt — the main agent never performs the role's work itself.
+## Planning and Handoff
 
-Roles are capabilities, not host-specific names. Before dispatching, map the role to a subagent of the right class:
+Every planning session gets a plan; read `references/writing-plans.md`. When the host is writable, create the session workspace before dispatching exploration work; it holds exploration reports and later artifacts. Planning and self-review are main-agent work. If the plan needs repository understanding you lack, dispatch explorer or researcher first; never inspect inline.
 
-- **Read-only roles** (explorer, researcher, reviewer, verifier, debugger): dispatch to a read-only subagent.
-- **Write/execute roles** (implementer, tester): dispatch to a general-purpose subagent that can edit files and run commands.
+Before any dispatch, resolve the adapter: locate `orchestrator-adapter-<host>`, load it, require contract version `1`, and record it in the plan header or workspace note; record it again in the execution ledger. If none is installed, ask whether to continue with generic probing, install it, or stop. Details: `references/execution.md`.
 
-| Host           | Dispatch tool                                   | Read-only target                       | Write/execute target | Model control                                                                                                                                      | Notes                                                                                                                                                   |
-| -------------- | ----------------------------------------------- | -------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OpenCode       | `task` with `subagent_type`                     | `explore`; `scout` when network needed | `general`            | no per-call model parameter — set the model on the role agent in host config; an unconfigured subagent inherits the primary (most expensive) model | define role subagents in `opencode.json` under `agent.*` or `.opencode/agent(s)/*.md`; gate spawnable types with `permission.task`                      |
-| Codex          | subagent spawn (confirm the exact tool in-host) | read-only subagent                     | general subagent     | confirm in-host; do not assume a per-invocation model parameter                                                                                    | Codex has subagents; verify the spawn tool and per-subagent model before dispatching. If no dispatch tool is exposed, report `blocked`                  |
-| Claude Code    | `Agent` (alias `Task`) with `subagent_type`     | `Explore` / `Plan`                     | `general-purpose`    | per-invocation `model` parameter, the subagent's `model` frontmatter, or `CLAUDE_CODE_SUBAGENT_MODEL`                                              | define role subagents in `.claude/agents/*.md`; restrict spawnable types with `Agent(type)`; a skill can fork a subagent with `context: fork` + `agent` |
-| Any other host | probe for a subagent/agent tool                 | —                                      | —                    | —                                                                                                                                                  | If the host exposes no dispatch mechanism, report `blocked` naming the missing capability rather than executing the role's work inline                  |
+### Add-ons
 
-Where a host needs named role subagents (OpenCode, Claude Code, Codex), create them once so their model tiers are pinned; without them, a dispatch still works but the subagent inherits the primary model. The routing table below stays capability-based; the concrete `subagent_type` per host is the table above.
+The default add-on is `none`. Installing an add-on makes it available; it does not activate it. Activation requires explicit user consent: a direct request or acceptance of a need-based offer.
 
-## Workspace and Ledger
+Selection uses three facts: installed, requested, and needed. `Needed` means the add-on's `### Activation` criteria say it benefits this plan and the base workflow does not already provide that benefit. Assess it for the current plan, not the repository. At planning start, scan available `orchestrator-addon-*` skills and assess each against the plan; a requested add-on is always a candidate. If the host exposes no add-on catalog, assess only requested or plan-named add-ons. Reading an add-on's description or `### Activation` criteria to assess need is selection, not activation; apply its `## Orchestrator Integration` only after consent.
 
-At orchestration start, resolve the workspace under the repository root:
+| Installed | Requested | Needed | Action                                                                                      |
+| --------- | --------- | ------ | ------------------------------------------------------------------------------------------- |
+| yes       | yes       | yes    | Activate the add-on.                                                                        |
+| yes       | yes       | no     | Ask once: skip it (recommended) or use it anyway. Honor the answer.                         |
+| yes       | no        | yes    | Offer it: ask whether to use it. Honor the answer.                                          |
+| yes       | no        | no     | Ignore it; continue with the base workflow.                                                 |
+| no        | yes       | yes    | Ask whether to install it, continue without it, or stop.                                    |
+| no        | no        | yes    | Ask whether to use it; if yes, ask whether to install it, continue without it, or stop.     |
+| no        | yes       | no     | Ask once: skip it (recommended) or use it anyway; only “use” leads to the install question. |
+| no        | no        | no     | Ignore it; continue with the base workflow.                                                 |
 
-1. Ensure `<repo-root>/.orchestrator/` exists with a `.gitignore` containing `*` — the directory ignores everything, including the `.gitignore` itself; create both if absent (idempotent).
-2. Scan existing `*/progress.md` first lines. A ledger whose first line names this goal (`# Orchestrator ledger — goal: <verbatim goal>`) is this session's workspace: tasks with a completion line are DONE — do not re-dispatch them; resume at the first task without one. A ledger whose last line is a fix round or a debug diagnosis is mid-loop; resume at the next loop step — the fix round after a diagnosis, the re-diagnosis after a refuted diagnosis, the next round after a fix round. A diagnosis refutation is recorded as a `Ruling:` line naming the re-diagnosis file, so the next loop step is always derivable from the ledger alone. A ledger naming a different goal is another session's workspace: leave it alone and start fresh.
-3. New session: create `<YYYY-MM-DD>-<goal-slug>/` with a ledger whose first line is the identity above and whose second line records the session BASE (`git rev-parse HEAD`) — the final review's whole-change diff needs it. Date prefix keeps sessions sortable; the slug keeps them readable; the ledger's first line — not the directory name — is the identity.
+A candidate add-on that cannot apply at all is `not applicable`: explain why and continue with the base workflow. Do not offer an override that cannot work; the add-on's `### Activation` says whether an exception is possible. An uninstalled add-on can be needed only when identified by the user, the live plan, or a skill catalog; do not guess uninstalled capabilities. An add-on without a `Needed` test is never offered proactively and, when requested, follows its existing activation rules as if needed. If several add-ons are needed, ask the user which one to activate; the current contract records one active add-on in the plan header.
 
-The ledger is the recovery map: conversation memory does not survive compaction, and controllers that lost their place have re-dispatched entire completed task sequences. After compaction, trust the ledger and `git log` over your own recollection. Record in it, one line each:
+When the user chooses use, load `orchestrator-addon-<name>`, read its `## Orchestrator Integration`, require contract version `1`, and apply only the sections it defines. A missing section means no change for that phase. An incompatible contract is `blocked: incompatible <skill> add-on contract`. If the user declines a needed add-on or chooses skip, follow the user and record a ruling; do not re-ask in the session. Record the choice in the plan header when saved and in the ledger.
 
-- `Task <N>: complete (commits <base7>..<head7>, review pass)` for code tasks, `Task <N>: complete (evidence: <one-liner>)` for non-code tasks — or `<K> parked` after a tripped breaker
-- `Task <N>: fix round <R>/<cap> (<X> addressed, <Y> open — <finding one-liners>)`
-- `Task <N>: diagnosed — <root-cause one-liner> (task_XXX-debug[-r<R>].md)` — the diagnosis exists; resume at the fix dispatch, not a fresh diagnosis
-- `Task <N>: deferred: <finding one-liner>`
-- `Task <N>: blocked — <why>`
-- `Ruling: <what you decided> — <why>`
+Stop and ask whether to save, adjust, or execute. Execute only after an explicit yes or execute request. The header records `**Add-on:** none` or the active add-on, with `**Add-on rationale:**` for a non-default selection (declined, skipped, overridden, or not applicable); an execution session does not re-ask. Missing field = `none`; an uninstalled add-on named in the header -> ask whether to install it, continue without it, or stop.
 
-Session artifacts live in the workspace alongside the ledger, one file per task:
+## Execution Setup
 
-| File                  | Written by   | Contents                                                                                                                        |
-| --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `task_XXX-brief.md`   | orchestrator | full requirements; exact values appear only here; written once at decomposition, reused by every re-dispatch and resume         |
-| `task_XXX-report.md`  | worker       | the worker's full report; fix reports append to it                                                                              |
-| `task_XXX-debug.md`   | debugger     | the diagnosis: reproduction, causal chain, root cause, proposed smallest repair                                                 |
-| `task_XXX-package.md` | orchestrator | review package: commit list + `--stat` + full diff; produced with shell redirection, never read into the orchestrator's context |
-| `task_XXX-review.md`  | reviewer     | the review report                                                                                                               |
-| `task_XXX-verify.md`  | verifier     | per-finding verdicts                                                                                                            |
+At execution start or resume, read `references/execution.md` and follow it. Resolve the live plan and adapter, create or resume the ledger, derive one brief per task, then dispatch. Before each task, re-read the live plan and reconcile changes; never rewrite a completed or in-flight brief. Evaluate each return; read the report file when in doubt. Replan on `failed`/`blocked`/`needs_followup`; append to the ledger in the same message.
 
-Hand artifacts over as files: everything pasted into a dispatch prompt stays resident in your context for the rest of the session and is re-read on every later turn. The dispatch carries paths; the worker reads the files itself.
-
-## Delegation Economics
-
-Delegate when the task is expensive, context-heavy, repetitive, specialized, parallelizable, or execution-oriented.
-
-Normally delegated:
-
-- Large repo inspection
-- API usage searches
-- Unfamiliar subsystems
-- Documentation research
-- Feature implementation
-- Large test suites
-- Debugging
-- Large-change review
-- Log analysis
-- Repetitive edits
-
-Keep inline: choosing the next step, resolving worker contradictions, judging evidence sufficiency, final synthesis.
-
-## Dispatch Loop
-
-1. Decompose the goal into tasks; write a brief file per task that needs exact values or detailed requirements.
-2. Dispatch each to the matching role (routing table below): read the role's template, fill its slots, send the entire filled prompt.
-3. Evaluate each return against its status; read the report file when the return raises doubts (evaluating a report file costs nothing — it is already on disk).
-4. Replan on `failed`/`blocked`/`needs_followup` (Failure Classification below); summarize with evidence when criteria are met. Append to the ledger in the same message as your bookkeeping.
+The ledger is the recovery map: after compaction, trust it and `git log` over recollection. The adapter supplies host mechanics and recommended setup; never edit host configuration. Record a permission or model gap when the host differs. Permissions are the routing table's tiers, mapped by the adapter; definitions, report writes, and destructive-operation approval are in `references/execution.md`. If the guide is missing, report `blocked`.
 
 ## Routing
 
-Capability-based, not personality-based. Route from this table; do not read the template's prompt skeleton yourself — read the fill instructions, fill, dispatch. This table names capabilities; the concrete `subagent_type` for each role on the current host is in Host Dispatch.
+Capability-based, not personality-based. Route from this table; fill the role template and dispatch. The concrete target for each role is in the adapter's Dispatch Mapping.
 
-| Role        | Capability                                                                | Permission                            | Route when                                           | Template                 |
-| ----------- | ------------------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- | ------------------------ |
-| explorer    | read-only repository investigation                                        | read-only                             | repository understanding the main agent lacks        | `prompts/explorer.md`    |
-| researcher  | external or documentation research                                        | read-only; network only when required | the answer lives outside the repository              | `prompts/researcher.md`  |
-| implementer | implementation within an explicitly stated scope                          | safe-edit                             | the objective creates or modifies code or files      | `prompts/implementer.md` |
-| tester      | test execution and validation                                             | execution                             | acceptance criteria need observed evidence from runs | `prompts/tester.md`      |
-| debugger    | failure diagnosis: reproduce, isolate root cause, propose smallest repair | read-only                             | a failure needs a root cause before repair is scoped | `prompts/debugger.md`    |
-| reviewer    | independent assessment of one worker's output                             | read-only                             | medium/high-risk work beyond deterministic checks    | `prompts/reviewer.md`    |
-| verifier    | fix verification, one verdict per finding                                 | read-only                             | confirmed findings were repaired and need verdicts   | `prompts/verifier.md`    |
-
-Economy: expensive tokens -> coordination; cheap tokens -> execution. Main context -> compact evidence; worker context -> detailed execution.
+| Role        | Capability                                            | Permission                            | Route when                                           | Template                 |
+| ----------- | ----------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- | ------------------------ |
+| explorer    | repository investigation                              | read-only                             | repository understanding the main agent lacks        | `prompts/explorer.md`    |
+| researcher  | external or documentation research                    | read-only; network only when required | the answer lives outside the repository              | `prompts/researcher.md`  |
+| implementer | implementation within a stated scope                  | safe-edit                             | the objective creates or modifies code or files      | `prompts/implementer.md` |
+| tester      | test execution and validation                         | execution                             | acceptance criteria need observed evidence from runs | `prompts/tester.md`      |
+| debugger    | failure diagnosis: reproduce, isolate, propose repair | read-only                             | a failure needs a root cause before repair is scoped | `prompts/debugger.md`    |
+| reviewer    | independent assessment of one worker's output         | read-only                             | medium/high-risk work beyond deterministic checks    | `prompts/reviewer.md`    |
+| verifier    | fix verification, one verdict per finding             | read-only                             | confirmed findings were repaired and need verdicts   | `prompts/verifier.md`    |
 
 ## Dispatch Discipline
 
-- One dispatch = one filled template. Never paste accumulated prior-task reports or session history; pass report-file paths instead.
-- Briefs are the single source of requirements: exact values (numbers, magic strings, signatures, test cases) appear only in the brief file, never in the dispatch prose or your own context. A fresh worker needs its brief, the interfaces it touches, and the binding constraints — nothing else.
+- One dispatch = one filled template. Pass report-file paths, never pasted reports or history. The main agent normally sees only the return contract — task id, status, one-line summary, concerns, workspace paths. Read the report file when it needs detail.
+- The plan is the requirements source; the brief is the worker's single source. Copy the plan's task section verbatim, then append Global Constraints, the task's Review Focus lines, the add-on's `### Task Briefs` rules, and execution context. Never paraphrase exact values.
 - Batch small same-shape work: several independent edits of the same kind are one dispatch with one review surface, not one dispatch each.
 - Never paste a worker's report, a diff, or a file dump into a dispatch; write it to the workspace and pass the path. Exception: finding one-liners for a fix or verification dispatch go in verbatim — they scope the work being judged.
-- Model discipline: use the least capable model that can handle the role. Where the host supports per-dispatch model selection (Claude Code's `model` parameter), set it explicitly; where model is a property of the role subagent in host config (OpenCode, Codex), pin it on the role subagent. An unconfigured subagent silently inherits the primary, most expensive model. Turn count beats token price: cheap models routinely take 2-3x the turns on multi-step work, so a mid-tier model is the floor for reviewers, debuggers, and implementers working from prose. Reserve the cheapest tier for transcription-like work (the complete code is in the brief) and single-file mechanical edits.
-
-- Model selection is not a prompt slot. Never write a `[MODEL]` slot into a dispatch prompt; it is a host-configuration concern, per Host Dispatch.
-- Record `BASE` (`git rev-parse HEAD`) before dispatching an implementer; the review package needs it — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task.
+- Read-only roles may write only their report file under the session workspace and, for the debugger, a disposable worktree or copy; never modify the checkout. If the target cannot write, the worker returns the full report inline and the orchestrator writes it; record `Permission gap: report write`.
+- Model discipline: use the least capable model that works. The adapter recommends where the model is pinned or passed; an unconfigured subagent may inherit the primary model. Turn count beats token price, so mid-tier is the floor for prose-driven roles; reserve the cheapest tier for transcription and single-file mechanical edits. Never put a `[MODEL]` slot in a prompt, and never edit host config.
+- Record `BASE` (`git rev-parse HEAD`) before dispatching an implementer; the review package needs it — never `HEAD~1`, which drops all but the last commit of a multi-commit task.
+- Add-on: if the active add-on has a `#### <role>` block under `### Dispatch`, include `## Add-on Instructions` and paste that block verbatim into the role's prompt. If it has no block for that role, omit the section.
 
 ## Dispatch Format
 
-Every dispatch is the role's template, filled and sent whole:
-
-1. Read `<skill_dir>/prompts/<role>.md`. `<skill_dir>` is the directory containing this SKILL.md, resolved from the skill's install path at load time — the orchestrator resolves it, the worker never does.
-2. Fill every prompt slot per the template's fill instructions; select the model per Host Dispatch, never as a prompt slot.
-3. Send the entire filled prompt as the dispatch. Do not improvise around it, summarize it, or append free-form prose: improvised prompts are the primary source of format drift, and the templates are the distilled, session-tested versions of every rule the worker needs.
-
-If a template cannot be located, mark the task `blocked` and report to the user. Never import third-party templates.
+Read `<skill_dir>/prompts/<role>.md` (`<skill_dir>` is this skill's install directory; the orchestrator resolves it, never the worker), fill every slot, and send the entire filled prompt. `[ADDON_SECTION]` is the active role block rendered as `## Add-on Instructions`, or nothing; remove the placeholder. Never improvise around the template — format drift starts there. If a template is missing, mark the task `blocked`; never import third-party templates.
 
 ## Parallelism
 
@@ -132,92 +96,61 @@ If a template cannot be located, mark the task `blocked` and report to the user.
 
 1. Max task depth: 1 — no worker spawns workers.
 2. Max active tasks: 4 concurrent.
-3. Max retries: 3 per task; then mark blocked and report. Debugger dispatches are diagnosis, not retries: they do not consume a retry (re-diagnosis is capped at 2 by Diagnosis).
+3. Retry budget: 3 failed attempts per task. Then a separate budget of 2 small in-scope adjustments. A small adjustment stays in scope, changes no architecture, public interface, dependency, data, or config schema, and is a localized edit. After two failed adjustments, mark blocked and report. A big or breaking change needs user approval. Debugger dispatches are diagnosis, not attempts; they consume no budget (re-diagnosis is capped at 2 in `references/execution.md`).
 4. Max orchestration rounds: 8 delegate-evaluate cycles; then escalate to the user.
 
 A retry must change something (context, scope, approach, worker, decomposition); never repeat identical inputs.
 
-## Verification Ladder
+## Review Gates
 
-```
-low risk    -> worker result + deterministic checks
-medium risk -> worker result + deterministic checks + reviewer when useful
-high risk   -> worker + deterministic validation + independent reviewer
-```
+Per-task reviews are gates for medium/high-risk tasks; one whole-change review closes every session.
 
-Risk factors: files modified, tests exist, blast radius, evidence independence. Deterministic checks = lint/typecheck/tests/build. The reviewer is read-only and must not blindly trust the implementer's report; it verifies against the review package.
+- When the task's risk calls for review, after an implementer reports generate the review package with shell redirection and dispatch a reviewer with the package, brief, report, and binding constraints. Never dispatch a reviewer without a package, and never tell one to ignore an issue.
+- On failure, send findings back to the same implementer session when resumable; otherwise dispatch a fresh implementer with the brief, report path, and findings. Diagnose first when the findings do not localize the defect. Re-review the fix surface with `verifier`; ledger every round.
+- Verify every repair before the next task. Close with a whole-change review against the goal, live plan, inputs, constraints, and `Plan change:` lines. Triage deferred findings; the summary cites the plan, verdicts, test evidence from report files, and every deferred or parked finding; never claim "tests pass" from a worker summary.
 
-## Review Loop
+Ladder: low risk -> worker + checks; medium -> add a reviewer when useful; high -> independent reviewer. The whole-change final review is mandatory at every risk level. Risk: blast radius, tests, evidence independence. Checks = lint/typecheck/tests/build. Full loop: `references/execution.md`.
 
-Per-task reviews are task-scoped gates. A broad whole-change review happens once, at the end.
+## Failure and Diagnosis
 
-1. After an implementer reports, generate the review package into the workspace (`git log --oneline <BASE>..<HEAD>`, `git diff --stat`, `git diff -U10` — one file, `task_XXX-package.md`). Produce it with shell redirection — never read the diff into your own context. Never dispatch a reviewer without a package file.
-2. Dispatch the reviewer with the package path, the brief path, the worker's report path, and the binding constraints copied verbatim. Do not pre-judge findings and never instruct a reviewer to ignore an issue; let findings surface and adjudicate them yourself.
-3. On `fail` — or any confirmed blocking finding — enter the fix loop: send the findings verbatim back to the same implementer (rounds 1-3); if the harness cannot resume it, dispatch a fresh implementer carrying the brief, report path, and findings — the report file is the persistent memory either way. When the findings do not localize the defect — no root cause to repair against — diagnose first (Diagnosis below) before scoping the fix. Every fix round ends with one scoped re-review (`verifier`) over a fresh fix package (`task_XXX-package-r<R>.md`, diffed since the last review); new breakage joins the open findings. Record each round in the ledger.
-4. Every repair's verification must be present before the next task starts; unreviewed fixes are how regressions land.
-5. When the review passes — or the retry cap is hit and open findings are adjudicated (see Rulings) — ledger the completion and move on. Deferred findings are ledgered and triaged at final review; a finding silently dropped is forbidden.
-
-Suggestions never block. Never re-run a suite the worker already ran; its report file is the test evidence.
-
-## Diagnosis
-
-Diagnosis is not a fix round and consumes no retry. When the findings do not localize the defect, dispatch a debugger first (diagnosis only), then scope the fix from its diagnosis. For debugger-scoped fixes, the fix dispatch's context carries the `task_XXX-debug.md` path alongside the findings; the implementer reads the diagnosis itself. A wrong or refuted diagnosis gets a re-diagnosis dispatch writing `task_XXX-debug-r<R>.md`, never an overwrite of the first; record the refutation as a `Ruling:` ledger line naming the re-diagnosis file. A diagnosis refuted twice (re-diagnoses up to -r2) is not converging — stop re-diagnosing, treat it as a `Wrong approach` and replan.
-
-## Final Review and Summary
-
-Per-task reviews are gates; one whole-change review closes the session:
-
-1. Generate `final-package.md` (commit list + `--stat` + full diff, session BASE..HEAD, shell redirection) and dispatch one reviewer over it, judged against the goal and the binding constraints.
-2. Triage the ledger's deferred findings against the final review: a confirmed load-bearing one gets the smallest unblocking repair (Rulings); the rest are reported, never silently dropped.
-3. Summarize to the user: the goal, what shipped (commits), test evidence, and every deferred or parked item with its reason. Append the session's close-out line to the ledger.
-
-## Failure Classification
-
-| Class                | Response                                                                         |
-| -------------------- | -------------------------------------------------------------------------------- |
-| Transient            | Retry                                                                            |
-| Insufficient context | Retry with more context                                                          |
-| Implementation bug   | Dispatch repair task; diagnose via debugger first when the root cause is unknown |
-| Wrong approach       | Replan                                                                           |
-| Permission problem   | Blocked; report to user                                                          |
-| Unknown              | Delegate investigation; debugger when the unknown is a failure's root cause      |
-
-When a task survives repeated retries, stop varying inputs and change the worker: dispatch a fresh implementer on a more capable model, framed as "prior attempts failed N times; you own it now", with the findings carried in context. A loop that survives retries usually means the worker cannot see its own problem; fresh eyes and a capability bump in one move. When the root cause is unknown, dispatch a debugger (prompts/debugger.md) before the repair. Every repair gets a verification (prompts/verifier.md) that verdicts the findings and inspects only the fix surface.
+Classify every failure before retrying; the classification table and worker-escalation rules are in `references/execution.md`. After three failed attempts, use the small-adjustment budget of two for in-scope, non-breaking repairs; after the second adjustment fails, mark blocked. Ask before any scope, architecture, interface, dependency, or data change. When the root cause is unknown, dispatch a debugger before the repair, and verify every repair. Diagnosis is not a fix round and consumes no budget; the protocol and re-diagnosis cap are in `references/execution.md`.
 
 ## Rulings, Not Stalls
 
-Decide conflicts, ambiguities, and plan defects yourself instead of parking the workflow on the user; carry the ruling into the context of dependent dispatches. Only four things go to the user: irreversible or destructive operations, security-sensitive actions, side effects outside the stated scope, and a goal so broken that every path forward is a guess. A wrong ruling costs visible rework; a parked question costs the session. Every ruling is a ledger entry.
+Decide conflicts, ambiguities, and plan defects yourself instead of parking the workflow on the user; carry the ruling into dependent dispatches. Every ruling is a ledger entry.
 
-At a retry cap with open findings: rule on each — reviewer wrong, park it with why the work stands; real but nothing downstream builds on it, park it deferred; real and load-bearing, rule on the smallest change that unblocks dependent work and carry it into the next dispatch. Every adjudication is a ledger entry; a silent discard is forbidden.
+Setup gates are asked once before work starts:
 
-## Permissions
+- plan handoff — stop, ask whether to save, adjust, or execute;
+- missing adapter — continue with generic probing, install it, or stop;
+- add-on selection — when an add-on is requested or needed, ask the selection question once; never activate without consent;
+- chosen add-on not installed — install it, continue without it, or stop;
+- missing plan for a multi-task execution — ask the user to save one first;
+- scope or architecture change to an approved plan — write a revision and ask.
 
-Worker permissions are the routing table's tiers:
+Choosing install stops the session until the user installs the skill and restarts or resumes.
 
-| Tier        | Grants                                                                                                      |
-| ----------- | ----------------------------------------------------------------------------------------------------------- |
-| `read-only` | read files and run non-mutating commands; no file changes, no staging, no branch or HEAD moves              |
-| `safe-edit` | read-only, plus edits within the dispatch's stated scope and that task's commits; no destructive operations |
-| `execution` | safe-edit for test setup blocking validation, plus the suites and builds the dispatch names                 |
+After execution starts, four things go to the user: irreversible or destructive operations, security-sensitive actions, side effects outside the stated scope, and a goal so broken that every path forward is a guess. A scope or architecture change to the approved plan is the one additional structural stop; mechanical plan changes stay inline and are ledgered. A wrong ruling costs visible rework; a parked question costs the session.
 
-Destructive operations require explicit user approval.
-
-## Context Sharing
-
-Reference prior results by workspace path: `task_001-report.md`, not pasted summaries. The main agent sees only the return contract — task id, status, one-line summary, concerns, workspace paths — never the worker's transcript, full file contents, or complete command output. When a later task needs detail, the brief file or the dispatch's context slot references the report path; the worker reads the file itself — reading a file costs the worker, pasting costs you forever. When your own context needs more, read the report file from disk or dispatch a follow-up task instead of expanding context.
+At an exhausted budget with open findings: rule on each — reviewer wrong, park it with why the work stands; real but nothing downstream builds on it, park it deferred; real and load-bearing, rule on the smallest change that unblocks dependent work and carry it into the next dispatch. Every adjudication is a ledger entry; a silent discard is forbidden.
 
 ## Common Rationalizations
 
-| Excuse                                       | Reality                                                                                                                |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Dispatching is overhead; I'll do it myself   | Main-agent execution is the most expensive seat in the session. Dispatch.                                              |
-| One more retry will converge                 | Past the retry cap the failure is structural. Escalate the worker or replan.                                           |
-| The fix was small; skip the verification     | Unverified fixes are how regressions land. Every fix gets verified.                                                    |
-| I'll fix this finding inline; it's obvious   | Inline fixes skip review and pollute the orchestrator context. Dispatch it.                                            |
-| Recording deferred findings is bookkeeping   | Deferred findings nobody reads are silently discarded. Ledger and triage them.                                         |
-| I'll write a tailored prompt for this worker | Improvised prompts are the primary source of format drift. The dispatch is the filled template, nothing else.          |
-| I'll just try a fix; diagnosis is overhead   | A fix scoped without a verified diagnosis is a guess. Dispatch the debugger first.                                     |
-| I'll paste the report into the next dispatch | Pasted text stays in your context forever. Pass the workspace path; the worker reads the file itself.                  |
-| The ledger is bookkeeping                    | The ledger is what survives compaction. Controllers without one have re-dispatched entire completed task sequences.    |
-| The worker spawned its own reviewer          | It's a duplicate seat reviewing the same diff; the orchestrator's review is the gate. Flag it as a defect, not rigor.  |
-| I'll just read HEAD~1 for the diff           | HEAD~1 silently drops all but the last commit of a multi-commit task. Record BASE before dispatching; package from it. |
+| Excuse                                       | Reality                                                                                                                                            |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dispatching is overhead; I'll do it myself   | Main-agent execution is the most expensive seat in the session. Dispatch.                                                                          |
+| One more retry will converge                 | After the retry budget, only an in-scope small adjustment is allowed; a structural failure needs a worker change, plan revision, or user decision. |
+| The fix was small; skip the verification     | Unverified fixes are how regressions land. Every fix gets verified.                                                                                |
+| I'll paste the report into the next dispatch | Pasted text stays in your context forever. Pass the workspace path; the worker reads the file.                                                     |
+| The ledger is bookkeeping                    | The ledger is what survives compaction. Controllers without one have re-dispatched completed task sequences.                                       |
+| The plan is saved; I'll start without asking | The handoff gate is mandatory. Stop and ask whether to save, adjust, or execute.                                                                   |
+| The add-on is installed, so use it           | Installation is availability, not activation. Apply the selection table and get consent.                                                           |
+| I'll edit the host config to enforce this    | Recommend the setting; never edit user configuration. Report a gap instead.                                                                        |
+| The debugger can just modify the checkout    | Diagnose in a disposable worktree or copy. The source checkout stays read-only.                                                                    |
+
+## References
+
+- [Planning guide](references/writing-plans.md) — read before writing a plan.
+- [Execution guide](references/execution.md) — read at execution start and on resume; contains adapter resolution, permission tiers, failure classification, diagnosis, and the review loop.
+
+If a referenced guide cannot be located, report `blocked`; do not improvise.
